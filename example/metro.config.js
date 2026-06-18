@@ -13,7 +13,7 @@ const root = path.resolve(__dirname, '..');
 const config = withMetroConfig(getDefaultConfig(__dirname), {
   root,
   dirname: __dirname,
-  conditions: ['react-native-spotlight-source'],
+  conditions: ['react-native-nitro-spotlight-source'],
 });
 
 module.exports = config;

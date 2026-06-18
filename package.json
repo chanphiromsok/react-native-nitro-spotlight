@@ -1,12 +1,12 @@
 {
-  "name": "react-native-spotlight",
-  "version": "0.1.0",
+  "name": "react-native-nitro-spotlight",
+  "version": "0.1.6",
   "description": "Walkthtought the app using nitro view wiht react native teleport",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
   "exports": {
     ".": {
-      "react-native-spotlight-source": "./src/index.tsx",
+      "react-native-nitro-spotlight-source": "./src/index.tsx",
       "types": "./lib/typescript/src/index.d.ts",
       "default": "./lib/module/index.js"
     },
@@ -34,9 +34,10 @@
     "!**/.*"
   ],
   "scripts": {
-    "example": "yarn workspace react-native-spotlight-example",
+    "example": "yarn workspace react-native-nitro-spotlight-example",
     "clean": "del-cli lib",
-    "prepare": "bob build",
+    "prepare": "bob build && node scripts/copy-nitrogen-json-to-lib.mjs",
+    "prepack": "node scripts/copy-nitrogen-json-to-lib.mjs",
     "nitrogen": "nitrogen",
     "typecheck": "tsc",
     "test": "jest",
@@ -50,14 +51,14 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/chanphiromsok/react-native-spotlight.git"
+    "url": "git+https://github.com/chanphiromsok/react-native-nitro-spotlight.git"
   },
   "author": "Rom <chanphiromsok2109@gmail.com> (https://github.com/chanphiromsok)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/chanphiromsok/react-native-spotlight/issues"
+    "url": "https://github.com/chanphiromsok/react-native-nitro-spotlight/issues"
   },
-  "homepage": "https://github.com/chanphiromsok/react-native-spotlight#readme",
+  "homepage": "https://github.com/chanphiromsok/react-native-nitro-spotlight#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },

@@ -10115,9 +10115,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-spotlight-example@workspace:example":
+"react-native-nitro-spotlight-example@workspace:example":
   version: 0.0.0-use.local
-  resolution: "react-native-spotlight-example@workspace:example"
+  resolution: "react-native-nitro-spotlight-example@workspace:example"
   dependencies:
     "@expo/metro-runtime": "npm:~55.0.11"
     expo: "npm:~55.0.26"
@@ -10134,9 +10134,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"react-native-spotlight@workspace:.":
+"react-native-nitro-spotlight@workspace:.":
   version: 0.0.0-use.local
-  resolution: "react-native-spotlight@workspace:."
+  resolution: "react-native-nitro-spotlight@workspace:."
   dependencies:
     "@eslint/compat": "npm:^2.1.0"
     "@eslint/eslintrc": "npm:^3.3.5"

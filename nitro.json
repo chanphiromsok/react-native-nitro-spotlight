@@ -11,11 +11,11 @@
     "SpotlightView": {
       "ios": {
         "language": "swift",
-        "implementationClassName": "HybridSpotlight"
+        "implementationClassName": "HybridSpotlightView"
       },
       "android": {
         "language": "kotlin",
-        "implementationClassName": "HybridSpotlight"
+        "implementationClassName": "HybridSpotlightView"
       }
     }
   },

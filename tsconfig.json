@@ -2,12 +2,12 @@
   "compilerOptions": {
     "rootDir": ".",
     "paths": {
-      "react-native-spotlight": ["./src/index"]
+      "react-native-nitro-spotlight": ["./src/index"]
     },
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
     "customConditions": [
-      "react-native-spotlight-source",
+      "react-native-nitro-spotlight-source",
       "react-native-strict-api"
     ],
     "esModuleInterop": true,
