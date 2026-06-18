@@ -1,1 +1,1 @@
-export { SpotlightView, WalkthroughSpotlight } from './SpotlightView';
+export { SpotlightView } from './SpotlightView';
