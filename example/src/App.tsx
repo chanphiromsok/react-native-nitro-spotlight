@@ -78,6 +78,7 @@ export default function App() {
         dimOpacity={0.68}
         cornerRadius={22}
         padding={8}
+        allowOverlayClick
       />
     </View>
   );

@@ -57,9 +57,10 @@ class HybridSpotlightView(
   /** True while spotlightView is a child of decorView. */
   private var overlayAdded = false
 
-  private var dimOpacityValue   = 0.55
+  private var dimOpacityValue = 0.55
   private var cornerRadiusValue = 12.0
-  private var paddingValue      = 6.0
+  private var paddingValue = 6.0
+  private var allowOverlayClickValue = false
 
   // -------------------------------------------------------------------------
   // Nitro / Fabric entry-point
@@ -111,7 +112,20 @@ class HybridSpotlightView(
       UiThreadUtil.runOnUiThread { spotlightView.padding = value.toFloat() }
     }
 
+  override var allowOverlayClick: Boolean
+    get() = allowOverlayClickValue
+    set(value) {
+      allowOverlayClickValue = value
+      UiThreadUtil.runOnUiThread { spotlightView.allowOverlayClick = value }
+    }
+
   override var onTargetLayout: ((Rect) -> Unit)? = null
+
+  override var onBackdropPress: (() -> Unit)? = null
+    set(value) {
+      field = value
+      UiThreadUtil.runOnUiThread { spotlightView.onBackdropPress = value }
+    }
 
   // -------------------------------------------------------------------------
   // Commands
@@ -172,14 +186,18 @@ class HybridSpotlightView(
   // -------------------------------------------------------------------------
 
   override fun prepareForRecycle() {
-    onTargetLayout    = null
-    dimOpacityValue   = 0.55
+    onTargetLayout = null
+    onBackdropPress = null
+    dimOpacityValue = 0.55
     cornerRadiusValue = 12.0
-    paddingValue      = 6.0
+    paddingValue = 6.0
+    allowOverlayClickValue = false
     UiThreadUtil.runOnUiThread {
-      spotlightView.dimOpacity   = 0.55f
+      spotlightView.dimOpacity = 0.55f
       spotlightView.cornerRadius = 12f
-      spotlightView.padding      = 6f
+      spotlightView.padding = 6f
+      spotlightView.allowOverlayClick = false
+      spotlightView.onBackdropPress = null
       spotlightView.clear(durationMs = 0L, onFinished = { removeOverlayFromDecor() })
     }
   }
@@ -199,9 +217,11 @@ class HybridSpotlightView(
     dv.addView(spotlightView, params)
 
     // Sync props that may have been set before the overlay was attached.
-    spotlightView.dimOpacity   = dimOpacityValue.toFloat()
+    spotlightView.dimOpacity = dimOpacityValue.toFloat()
     spotlightView.cornerRadius = cornerRadiusValue.toFloat()
-    spotlightView.padding      = paddingValue.toFloat()
+    spotlightView.padding = paddingValue.toFloat()
+    spotlightView.allowOverlayClick = allowOverlayClickValue
+    spotlightView.onBackdropPress = onBackdropPress
 
     overlayAdded = true
   }

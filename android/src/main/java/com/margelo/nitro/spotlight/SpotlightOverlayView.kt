@@ -45,6 +45,10 @@ internal class SpotlightOverlayView(
       invalidate()
     }
 
+  var allowOverlayClick: Boolean = false
+
+  var onBackdropPress: (() -> Unit)? = null
+
   // -------------------------------------------------------------------------
   // Drawing
   // -------------------------------------------------------------------------
@@ -217,9 +221,9 @@ internal class SpotlightOverlayView(
   // -------------------------------------------------------------------------
   // Touch handling
   //
-  // Strategy: never intercept. On DOWN, decide once whether the touch is
-  // inside the hole (pass-through) or outside (block). Carry that decision
-  // through the rest of the gesture.
+  // Strategy: never intercept. On DOWN, decide once whether the touch should
+  // pass through to RN underneath or be blocked by the overlay. Carry that
+  // decision through the rest of the gesture.
   //
   // When there is no active spotlight hasActiveSpotlight() == false, so
   // dispatchTouchEvent returns false immediately — but this is a belt-and-
@@ -238,12 +242,20 @@ internal class SpotlightOverlayView(
 
     when (event.actionMasked) {
       MotionEvent.ACTION_DOWN -> {
-        blockingTouch = !isTouchInsideHole(event.x.toInt(), event.y.toInt())
-        // Return false for hole touches so the decor-view continues its
-        // normal child hit-test and delivers the gesture to RN.
+        blockingTouch = !allowOverlayClick && !isTouchInsideHole(event.x.toInt(), event.y.toInt())
+        // Return false for hole touches, and for all touches when allowOverlayClick
+        // is true, so the decor-view continues its normal child hit-test and
+        // delivers the gesture to RN underneath.
         return blockingTouch
       }
-      MotionEvent.ACTION_UP,
+      MotionEvent.ACTION_UP -> {
+        val wasBlocking = blockingTouch
+        blockingTouch = false
+        if (wasBlocking) {
+          onBackdropPress?.invoke()
+        }
+        return wasBlocking
+      }
       MotionEvent.ACTION_POINTER_UP,
       MotionEvent.ACTION_CANCEL -> {
         val wasBlocking = blockingTouch
