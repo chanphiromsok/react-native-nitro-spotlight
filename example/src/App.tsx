@@ -1,6 +1,6 @@
-import { useRef, type ElementRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useRef, type ElementRef } from 'react';
+import { Pressable, StyleSheet, Text, ToastAndroid, View } from 'react-native';
 import { Spotlight, useSpotlight } from 'react-native-nitro-spotlight';
 
 // ─── App ──────────────────────────────────────────────────────────────────────
@@ -10,7 +10,6 @@ export default function App() {
   const startRef = useRef<ElementRef<typeof View>>(null);
   const featureRef = useRef<ElementRef<typeof View>>(null);
   const finishRef = useRef<ElementRef<typeof View>>(null);
-
 
   return (
     <View style={styles.screen}>
@@ -98,7 +97,10 @@ function SpotlightButton({
   return (
     <Pressable
       accessibilityRole="button"
-      onPress={onPress}
+      onPress={() => {
+        onPress();
+        ToastAndroid.show(`${label},`, 1000);
+      }}
       style={({ pressed }) => [
         styles.button,
         variant === 'secondary' && styles.secondaryButton,

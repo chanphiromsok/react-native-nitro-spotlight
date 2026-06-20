@@ -13,7 +13,7 @@ interface SpotlightComponentProps {
   /** Opacity of the dim overlay. Default 0.6 */
   dimOpacity?: number;
 
-  /** Corner radius of the cutout hole. Default 16 */
+  /** Border radius of the cutout hole. Default 16 */
   cornerRadius?: number;
 
   /** Padding around the target rect. Default 8 */

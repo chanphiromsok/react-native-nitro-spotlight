@@ -13,6 +13,7 @@ export interface Rect {
 
 export interface SpotlightProps extends HybridViewProps {
   dimOpacity: number;
+  /** Border radius of the cutout hole. */
   cornerRadius: number;
   padding: number;
   // Called after native measures the target — JS uses this to position tooltip

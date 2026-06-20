@@ -5,8 +5,7 @@ import com.facebook.react.bridge.NativeModule
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.module.model.ReactModuleInfoProvider
 import com.facebook.react.uimanager.ViewManager
-
-import com.margelo.nitro.spotlight.views.HybridSpotlightManager
+import com.margelo.nitro.spotlight.views.HybridSpotlightViewManager
 
 class SpotlightPackage : BaseReactPackage() {
     override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? {
@@ -18,7 +17,7 @@ class SpotlightPackage : BaseReactPackage() {
     }
 
     override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {
-        return listOf(HybridSpotlightManager())
+        return listOf(HybridSpotlightViewManager())
     }
 
     companion object {

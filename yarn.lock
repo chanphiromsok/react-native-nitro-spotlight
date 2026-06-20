@@ -10129,7 +10129,6 @@ __metadata:
     react-native-builder-bob: "npm:^0.43.0"
     react-native-monorepo-config: "npm:^0.4.0"
     react-native-nitro-modules: "npm:^0.35.9"
-    react-native-teleport: "npm:^1.1.9"
     react-native-web: "npm:~0.21.0"
   languageName: unknown
   linkType: soft
@@ -10168,17 +10167,6 @@ __metadata:
     react-native-nitro-modules: ^0.35.9
   languageName: unknown
   linkType: soft
-
-"react-native-teleport@npm:^1.1.9":
-  version: 1.1.9
-  resolution: "react-native-teleport@npm:1.1.9"
-  peerDependencies:
-    react: "*"
-    react-dom: "*"
-    react-native: "*"
-  checksum: 10c0/ee62a5c774299553fec05ef07ad85eeadfb4a8b2a425547a45ee0431dd26d513d71f2be396fa0b4cacb7d6ddb29f63cdcd7e12f093f5a0f0e30f332f4a3d852e
-  languageName: node
-  linkType: hard
 
 "react-native-web@npm:~0.21.0":
   version: 0.21.2
