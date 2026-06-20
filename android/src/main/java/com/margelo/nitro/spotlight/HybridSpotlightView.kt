@@ -57,10 +57,12 @@ class HybridSpotlightView(
   /** True while spotlightView is a child of decorView. */
   private var overlayAdded = false
 
-  private var dimOpacityValue = 0.55
-  private var cornerRadiusValue = 12.0
-  private var paddingValue = 6.0
-  private var allowOverlayClickValue = false
+  private var dimOpacityValue: Double? = null
+  private var borderRadiusValue: Double? = null
+  private var paddingValue: Double? = null
+  private var borderWidthValue: Double? = null
+  private var borderColorValue: String? = null
+  private var allowOverlayClickValue: Boolean? = null
 
   // -------------------------------------------------------------------------
   // Nitro / Fabric entry-point
@@ -91,32 +93,52 @@ class HybridSpotlightView(
   // Properties
   // -------------------------------------------------------------------------
 
-  override var dimOpacity: Double
+  override var dimOpacity: Double?
     get() = dimOpacityValue
     set(value) {
+      if (dimOpacityValue == value) return
       dimOpacityValue = value
-      UiThreadUtil.runOnUiThread { spotlightView.dimOpacity = value.toFloat() }
+      UiThreadUtil.runOnUiThread { spotlightView.dimOpacity = (value ?: DEFAULT_DIM_OPACITY).toFloat() }
     }
 
-  override var cornerRadius: Double
-    get() = cornerRadiusValue
+  override var borderRadius: Double?
+    get() = borderRadiusValue
     set(value) {
-      cornerRadiusValue = value
-      UiThreadUtil.runOnUiThread { spotlightView.cornerRadius = value.toFloat() }
+      if (borderRadiusValue == value) return
+      borderRadiusValue = value
+      UiThreadUtil.runOnUiThread { spotlightView.borderRadius = (value ?: DEFAULT_BORDER_RADIUS).toFloat() }
     }
 
-  override var padding: Double
+  override var padding: Double?
     get() = paddingValue
     set(value) {
+      if (paddingValue == value) return
       paddingValue = value
-      UiThreadUtil.runOnUiThread { spotlightView.padding = value.toFloat() }
+      UiThreadUtil.runOnUiThread { spotlightView.padding = (value ?: DEFAULT_PADDING).toFloat() }
     }
 
-  override var allowOverlayClick: Boolean
+  override var borderWidth: Double?
+    get() = borderWidthValue
+    set(value) {
+      if (borderWidthValue == value) return
+      borderWidthValue = value
+      UiThreadUtil.runOnUiThread { spotlightView.borderWidth = (value ?: DEFAULT_BORDER_WIDTH).toFloat() }
+    }
+
+  override var borderColor: String?
+    get() = borderColorValue
+    set(value) {
+      if (borderColorValue == value) return
+      borderColorValue = value
+      UiThreadUtil.runOnUiThread { spotlightView.borderColor = value ?: DEFAULT_BORDER_COLOR }
+    }
+
+  override var allowOverlayClick: Boolean?
     get() = allowOverlayClickValue
     set(value) {
+      if (allowOverlayClickValue == value) return
       allowOverlayClickValue = value
-      UiThreadUtil.runOnUiThread { spotlightView.allowOverlayClick = value }
+      UiThreadUtil.runOnUiThread { spotlightView.allowOverlayClick = value ?: DEFAULT_ALLOW_OVERLAY_CLICK }
     }
 
   override var onTargetLayout: ((Rect) -> Unit)? = null
@@ -188,15 +210,19 @@ class HybridSpotlightView(
   override fun prepareForRecycle() {
     onTargetLayout = null
     onBackdropPress = null
-    dimOpacityValue = 0.55
-    cornerRadiusValue = 12.0
-    paddingValue = 6.0
-    allowOverlayClickValue = false
+    dimOpacityValue = null
+    borderRadiusValue = null
+    paddingValue = null
+    borderWidthValue = null
+    borderColorValue = null
+    allowOverlayClickValue = null
     UiThreadUtil.runOnUiThread {
-      spotlightView.dimOpacity = 0.55f
-      spotlightView.cornerRadius = 12f
-      spotlightView.padding = 6f
-      spotlightView.allowOverlayClick = false
+      spotlightView.dimOpacity = DEFAULT_DIM_OPACITY.toFloat()
+      spotlightView.borderRadius = DEFAULT_BORDER_RADIUS.toFloat()
+      spotlightView.padding = DEFAULT_PADDING.toFloat()
+      spotlightView.borderWidth = DEFAULT_BORDER_WIDTH.toFloat()
+      spotlightView.borderColor = DEFAULT_BORDER_COLOR
+      spotlightView.allowOverlayClick = DEFAULT_ALLOW_OVERLAY_CLICK
       spotlightView.onBackdropPress = null
       spotlightView.clear(durationMs = 0L, onFinished = { removeOverlayFromDecor() })
     }
@@ -217,10 +243,12 @@ class HybridSpotlightView(
     dv.addView(spotlightView, params)
 
     // Sync props that may have been set before the overlay was attached.
-    spotlightView.dimOpacity = dimOpacityValue.toFloat()
-    spotlightView.cornerRadius = cornerRadiusValue.toFloat()
-    spotlightView.padding = paddingValue.toFloat()
-    spotlightView.allowOverlayClick = allowOverlayClickValue
+    spotlightView.dimOpacity = (dimOpacityValue ?: DEFAULT_DIM_OPACITY).toFloat()
+    spotlightView.borderRadius = (borderRadiusValue ?: DEFAULT_BORDER_RADIUS).toFloat()
+    spotlightView.padding = (paddingValue ?: DEFAULT_PADDING).toFloat()
+    spotlightView.borderWidth = (borderWidthValue ?: DEFAULT_BORDER_WIDTH).toFloat()
+    spotlightView.borderColor = borderColorValue ?: DEFAULT_BORDER_COLOR
+    spotlightView.allowOverlayClick = allowOverlayClickValue ?: DEFAULT_ALLOW_OVERLAY_CLICK
     spotlightView.onBackdropPress = onBackdropPress
 
     overlayAdded = true
@@ -242,5 +270,14 @@ class HybridSpotlightView(
         dv.removeView(spotlightView)
       }
     }
+  }
+
+  companion object {
+    private const val DEFAULT_DIM_OPACITY = 0.55
+    private const val DEFAULT_BORDER_RADIUS = 12.0
+    private const val DEFAULT_PADDING = 6.0
+    private const val DEFAULT_BORDER_WIDTH = 1.5
+    private const val DEFAULT_BORDER_COLOR = "#FFFFFF"
+    private const val DEFAULT_ALLOW_OVERLAY_CLICK = false
   }
 }

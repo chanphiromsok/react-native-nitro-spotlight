@@ -76,8 +76,10 @@ export default function App() {
       <Spotlight
         spotlightRef={spotlight._ref}
         dimOpacity={0.68}
-        cornerRadius={22}
+        borderRadius={22}
+        borderWidth={0}
         padding={8}
+        borderColor="#8FB7FF"
         allowOverlayClick
       />
     </View>

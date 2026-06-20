@@ -7,11 +7,10 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Region
+import android.os.Trace
 import android.view.MotionEvent
 import android.view.View
 import android.view.animation.DecelerateInterpolator
@@ -27,12 +26,15 @@ internal class SpotlightOverlayView(
 
   var dimOpacity: Float = 0.55f
     set(value) {
+      if (field == value) return
       field = value
+      updateDimPaintColor()
       invalidate()
     }
 
-  var cornerRadius: Float = 12f
+  var borderRadius: Float = 12f
     set(value) {
+      if (field == value) return
       field = value
       rebuildHolePath()
       invalidate()
@@ -40,12 +42,34 @@ internal class SpotlightOverlayView(
 
   var padding: Float = 6f
     set(value) {
+      if (field == value) return
       field = value
       rebuildHolePath()
       invalidate()
     }
 
+  var borderWidth: Float = 1.5f
+    set(value) {
+      if (field == value) return
+      field = value
+      updateRingStrokeWidth()
+      invalidate()
+    }
+
+  var borderColor: String = "#FFFFFF"
+    set(value) {
+      if (field == value) return
+      field = value
+      ringPaint.color = parseBorderColor(value)
+      invalidate()
+    }
+
   var allowOverlayClick: Boolean = false
+    set(value) {
+      if (field == value) return
+      field = value
+      rebuildHolePath()
+    }
 
   var onBackdropPress: (() -> Unit)? = null
 
@@ -55,16 +79,13 @@ internal class SpotlightOverlayView(
 
   private val dimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
     style = Paint.Style.FILL
-  }
-
-  private val clearPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-    xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
-    style = Paint.Style.FILL
+    color = dimColor()
   }
 
   private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-    color = Color.WHITE
+    color = parseBorderColor(borderColor)
     style = Paint.Style.STROKE
+    strokeWidth = borderWidth.coerceAtLeast(0f) * density
   }
 
   // -------------------------------------------------------------------------
@@ -76,12 +97,18 @@ internal class SpotlightOverlayView(
    * (DIP units, as returned by measureInWindow on Android).
    */
   private val windowRectDp = RectF()
+  private val overlayOrigin = IntArray(2)
+  private val visibleWindowFrame = Rect()
 
   private val currentLocalPx = RectF()
   private val targetLocalPx = RectF()
   private val cutRect = RectF()
+  private val overlayPath = Path().apply {
+    fillType = Path.FillType.EVEN_ODD
+  }
   private val holePath = Path()
   private val holeRegion = Region()
+  private val holeClipRegion = Region()
   private val holeRegionBounds = Rect()
   private val holePathBounds = RectF()
 
@@ -102,9 +129,6 @@ internal class SpotlightOverlayView(
   // -------------------------------------------------------------------------
 
   init {
-    // Hardware layer so PorterDuff.CLEAR works correctly.
-    setLayerType(View.LAYER_TYPE_HARDWARE, null)
-
     // FrameLayout/ViewGroup defaults to WILL_NOT_DRAW when it has no
     // background. We draw the dim overlay in onDraw(), so opt in explicitly.
     setWillNotDraw(false)
@@ -160,6 +184,7 @@ internal class SpotlightOverlayView(
       cancelAnimation()
       currentLocalPx.setEmpty()
       targetLocalPx.setEmpty()
+      overlayPath.reset()
       holePath.reset()
       holeRegion.setEmpty()
       invalidate()
@@ -201,21 +226,15 @@ internal class SpotlightOverlayView(
   // Drawing
   // -------------------------------------------------------------------------
 
-  override fun onDraw(canvas: Canvas) {
+  override fun onDraw(canvas: Canvas) = traceSection(TRACE_ON_DRAW) {
     super.onDraw(canvas)
 
-    if (!hasActiveSpotlight()) return
+    if (!hasActiveSpotlight()) return@traceSection
 
-    ringPaint.strokeWidth = 1.5f * density
-
-    dimPaint.color = Color.argb(
-      (dimOpacity.coerceIn(0f, 1f) * 255).toInt(),
-      0, 0, 0,
-    )
-
-    canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), dimPaint)
-    canvas.drawPath(holePath, clearPaint)
-    canvas.drawPath(holePath, ringPaint)
+    canvas.drawPath(overlayPath, dimPaint)
+    if (borderWidth > 0f) {
+      canvas.drawPath(holePath, ringPaint)
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -236,9 +255,9 @@ internal class SpotlightOverlayView(
 
   override fun onInterceptTouchEvent(event: MotionEvent): Boolean = false
 
-  override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+  override fun dispatchTouchEvent(event: MotionEvent): Boolean = traceSection(TRACE_TOUCH) {
     // No spotlight active — let every touch fall through to RN underneath.
-    if (!hasActiveSpotlight()) return false
+    if (!hasActiveSpotlight()) return@traceSection false
 
     when (event.actionMasked) {
       MotionEvent.ACTION_DOWN -> {
@@ -246,7 +265,7 @@ internal class SpotlightOverlayView(
         // Return false for hole touches, and for all touches when allowOverlayClick
         // is true, so the decor-view continues its normal child hit-test and
         // delivers the gesture to RN underneath.
-        return blockingTouch
+        blockingTouch
       }
       MotionEvent.ACTION_UP -> {
         val wasBlocking = blockingTouch
@@ -254,15 +273,15 @@ internal class SpotlightOverlayView(
         if (wasBlocking) {
           onBackdropPress?.invoke()
         }
-        return wasBlocking
+        wasBlocking
       }
       MotionEvent.ACTION_POINTER_UP,
       MotionEvent.ACTION_CANCEL -> {
         val wasBlocking = blockingTouch
         blockingTouch = false
-        return wasBlocking
+        wasBlocking
       }
-      else -> return blockingTouch
+      else -> blockingTouch
     }
   }
 
@@ -285,13 +304,10 @@ internal class SpotlightOverlayView(
    * multiplying by density and adding the visible window frame offset, then
    * subtract this overlay's screen origin.
    */
-  private fun windowDpToLocalPx(windowDp: RectF): RectF {
-    if (windowDp.isEmpty) return RectF()
+  private fun windowDpToLocalPx(windowDp: RectF): RectF = traceSection(TRACE_WINDOW_TO_LOCAL) {
+    if (windowDp.isEmpty) return@traceSection RectF()
 
-    val overlayOrigin = IntArray(2)
     getLocationOnScreen(overlayOrigin)
-
-    val visibleWindowFrame = Rect()
     getWindowVisibleDisplayFrame(visibleWindowFrame)
 
     val screenLeft = windowDp.left * density + visibleWindowFrame.left
@@ -299,7 +315,7 @@ internal class SpotlightOverlayView(
     val screenRight = windowDp.right * density + visibleWindowFrame.left
     val screenBottom = windowDp.bottom * density + visibleWindowFrame.top
 
-    return RectF(
+    RectF(
       screenLeft - overlayOrigin[0],
       screenTop - overlayOrigin[1],
       screenRight - overlayOrigin[0],
@@ -307,14 +323,16 @@ internal class SpotlightOverlayView(
     )
   }
 
-  private fun rebuildHolePath() {
+  private fun rebuildHolePath() = traceSection(TRACE_REBUILD_HOLE) {
+    overlayPath.reset()
+    overlayPath.fillType = Path.FillType.EVEN_ODD
     holePath.reset()
     holeRegion.setEmpty()
 
-    if (currentLocalPx.isEmpty) return
+    if (currentLocalPx.isEmpty || width == 0 || height == 0) return@traceSection
 
     val pad = padding * density
-    val radius = (cornerRadius + padding).coerceAtLeast(0f) * density
+    val radius = (borderRadius + padding).coerceAtLeast(0f) * density
 
     cutRect.set(
       currentLocalPx.left - pad,
@@ -324,13 +342,19 @@ internal class SpotlightOverlayView(
     )
 
     holePath.addRoundRect(cutRect, radius, radius, Path.Direction.CW)
-    holePath.computeBounds(holePathBounds, true)
-    holePathBounds.roundOut(holeRegionBounds)
-    holeRegion.setPath(holePath, Region(holeRegionBounds))
+    overlayPath.addRect(0f, 0f, width.toFloat(), height.toFloat(), Path.Direction.CW)
+    overlayPath.addPath(holePath)
+
+    if (!allowOverlayClick) {
+      holePath.computeBounds(holePathBounds, true)
+      holePathBounds.roundOut(holeRegionBounds)
+      holeClipRegion.set(holeRegionBounds)
+      holeRegion.setPath(holePath, holeClipRegion)
+    }
   }
 
   private fun hasActiveSpotlight(): Boolean =
-    !currentLocalPx.isEmpty && !holePath.isEmpty
+    !currentLocalPx.isEmpty && !overlayPath.isEmpty
 
   // -------------------------------------------------------------------------
   // Animation
@@ -379,6 +403,7 @@ internal class SpotlightOverlayView(
             // Clear animation finished — reset everything.
             currentLocalPx.setEmpty()
             targetLocalPx.setEmpty()
+            overlayPath.reset()
             holePath.reset()
             holeRegion.setEmpty()
             invalidate()
@@ -405,6 +430,40 @@ internal class SpotlightOverlayView(
   private fun lerp(from: Float, to: Float, progress: Float): Float =
     from + (to - from) * progress
 
+  private inline fun <T> traceSection(name: String, block: () -> T): T {
+    if (!BuildConfig.DEBUG) return block()
+
+    Trace.beginSection(name)
+    return try {
+      block()
+    } finally {
+      Trace.endSection()
+    }
+  }
+
+  private fun updateDimPaintColor() {
+    dimPaint.color = dimColor()
+  }
+
+  private fun updateRingStrokeWidth() {
+    ringPaint.strokeWidth = borderWidth.coerceAtLeast(0f) * density
+  }
+
+  private fun dimColor(): Int = Color.argb(
+    (dimOpacity.coerceIn(0f, 1f) * 255).toInt(),
+    0, 0, 0,
+  )
+
+  private fun parseBorderColor(value: String): Int =
+    runCatching { Color.parseColor(value) }.getOrDefault(Color.WHITE)
+
   private val density: Float
     get() = resources.displayMetrics.density
+
+  private companion object {
+    private const val TRACE_ON_DRAW = "Spotlight.onDraw"
+    private const val TRACE_TOUCH = "Spotlight.dispatchTouchEvent"
+    private const val TRACE_WINDOW_TO_LOCAL = "Spotlight.windowDpToLocalPx"
+    private const val TRACE_REBUILD_HOLE = "Spotlight.rebuildHolePath"
+  }
 }

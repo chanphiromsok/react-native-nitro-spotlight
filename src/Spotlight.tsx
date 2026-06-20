@@ -10,14 +10,20 @@ interface SpotlightComponentProps {
    */
   spotlightRef: RefObject<SpotlightRef | null>;
 
-  /** Opacity of the dim overlay. Default 0.6 */
+  /** Opacity of the dim overlay. Omitted values are not sent to native. */
   dimOpacity?: number;
 
-  /** Border radius of the cutout hole. Default 16 */
-  cornerRadius?: number;
+  /** Border radius of the cutout hole. Omitted values are not sent to native. */
+  borderRadius?: number;
 
-  /** Padding around the target rect. Default 8 */
+  /** Padding around the target rect. Omitted values are not sent to native. */
   padding?: number;
+
+  /** Width of the border around the cutout. Set to 0 to remove it. Omitted values are not sent to native. */
+  borderWidth?: number;
+
+  /** Color of the border around the cutout. Omitted values are not sent to native. */
+  borderColor?: string;
 
   /** Whether taps on the dimmed overlay should pass through to Pressables underneath. */
   allowOverlayClick?: boolean;
@@ -52,10 +58,12 @@ interface SpotlightComponentProps {
  */
 export function Spotlight({
   spotlightRef,
-  dimOpacity = 0.6,
-  cornerRadius = 16,
-  padding = 8,
-  allowOverlayClick = false,
+  dimOpacity,
+  borderRadius,
+  padding,
+  borderWidth,
+  borderColor,
+  allowOverlayClick,
   onBackdropPress,
   style,
 }: SpotlightComponentProps) {
@@ -79,8 +87,10 @@ export function Spotlight({
     <SpotlightView
       hybridRef={callback(hybridRef)}
       dimOpacity={dimOpacity}
-      cornerRadius={cornerRadius}
+      borderRadius={borderRadius}
       padding={padding}
+      borderWidth={borderWidth}
+      borderColor={borderColor}
       allowOverlayClick={allowOverlayClick}
       onBackdropPress={callback(onBackdropPress)}
       pointerEvents="none"
