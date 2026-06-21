@@ -78,6 +78,8 @@ That’s it. No measuring. No portal juggling. No chaos.
 
 Use `useSpotlightTour()` when you want a real walkthrough.
 
+Want to teach users actual app abilities like “filter results” or “create your first project”? See [User skills with Spotlight](docs/user-skills.md).
+
 Each step has an `id`. Spread `getTargetProps(id)` on the matching view, then call `tour.start()`.
 
 ```tsx
