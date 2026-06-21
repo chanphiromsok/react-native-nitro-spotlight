@@ -1,0 +1,92 @@
+# react-native-nitro-spotlight
+
+Native spotlight overlay for React Native New Architecture apps, powered by Nitro Modules.
+
+## Package
+
+- npm package: `react-native-nitro-spotlight`
+- peer dependency: `react-native-nitro-modules`
+- public exports live in `src/index.tsx`
+
+## Main API
+
+Prefer the high-level API:
+
+```tsx
+import { Spotlight, useSpotlight } from 'react-native-nitro-spotlight';
+
+const spotlight = useSpotlight();
+
+<Spotlight controls={spotlight} />;
+spotlight.highlight(viewRef, { durationMs: 400 });
+spotlight.clear();
+```
+
+Use `SpotlightView` only as a low-level escape hatch for custom Nitro ref wiring.
+
+## Product tours
+
+Use `useSpotlightTour({ steps })` for onboarding walkthroughs.
+
+```tsx
+const tour = useSpotlightTour({ steps });
+
+<View {...tour.getTargetProps('filter')} />
+<Spotlight controls={tour.spotlight} />
+```
+
+Rules:
+
+- Keep `steps` stable with `useMemo`.
+- Spread `getTargetProps(id)` on each target view.
+- Start the tour only after target views have mounted.
+
+## Touch behavior
+
+Important semantics:
+
+- Touches inside the cutout pass through to the app.
+- By default, backdrop touches are blocked.
+- `allowOverlayClick` lets backdrop touches pass through to buttons/views underneath.
+- `onBackdropPress` still fires when the backdrop is tapped, even when `allowOverlayClick` is true.
+
+Do not describe `onBackdropPress` as only firing when `allowOverlayClick` is false.
+
+## Animation behavior
+
+Repeated same-target highlights should not restart the current path animation. That can create a visible hitch even when CPU is fine.
+
+Expected behavior:
+
+- Same target while animating: ignore duplicate highlight.
+- Different target: interrupt and animate to the new target.
+- Duplicate clear while clearing: ignore duplicate clear.
+
+For visible animation hitches, Core Animation traces are usually more useful than Time Profiler traces.
+
+## Native files
+
+- iOS overlay: `ios/SpotlightOverlayView.swift`
+- iOS Nitro host: `ios/HybridSpotlightView.swift`
+- Android overlay: `android/src/main/java/com/margelo/nitro/spotlight/SpotlightOverlayView.kt`
+- Android Nitro host: `android/src/main/java/com/margelo/nitro/spotlight/HybridSpotlightView.kt`
+
+## Validation
+
+Run:
+
+```sh
+npx tsc --noEmit
+```
+
+For iOS native changes:
+
+```sh
+npm run build:ios
+```
+
+For Android native changes:
+
+```sh
+npm run build:android
+```
