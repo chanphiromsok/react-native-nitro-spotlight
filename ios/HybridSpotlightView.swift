@@ -17,10 +17,15 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
 
   override init() {
     super.init()
-
-    anchorView.isHidden = true
-    anchorView.isUserInteractionEnabled = false
-    anchorView.accessibilityElementsHidden = true
+  }
+  
+  func beforeUpdate() {
+    spotlightView.dimOpacity = CGFloat(dimOpacity ?? Self.defaultDimOpacity)
+    spotlightView.borderRadius = CGFloat(borderRadius ?? Self.defaultBorderRadius)
+    spotlightView.borderColor = borderColor ?? Self.defaultBorderColor
+    spotlightView.padding = padding ?? 0;
+    spotlightView.borderWidth = borderWidth ?? 0;
+    spotlightView.allowOverlayClick = allowOverlayClick ?? false
   }
   
   //  Override by nitro
