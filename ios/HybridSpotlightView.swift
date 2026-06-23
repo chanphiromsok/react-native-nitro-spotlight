@@ -7,7 +7,7 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
   // MARK: - Nitro
 
   private let anchorView = UIView(frame: .zero)
-  private let overlayView = SpotlightOverlayView()
+  private let spotlightView = SpotlightView()
   private weak var attachedWindow: UIWindow?
   private var overlayAdded = false
 
@@ -22,48 +22,59 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
     anchorView.isUserInteractionEnabled = false
     anchorView.accessibilityElementsHidden = true
   }
+  
+  //  Override by nitro
+  func onDropView() {
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      spotlightView.clear()
+      removeOverlayFromWindow()
+    }
+  }
+  
+
 
   // MARK: - Props
 
   var dimOpacity: Double? {
     didSet {
       guard oldValue != dimOpacity else { return }
-      overlayView.dimOpacity = CGFloat(dimOpacity ?? Self.defaultDimOpacity)
+      spotlightView.dimOpacity = CGFloat(dimOpacity ?? Self.defaultDimOpacity)
     }
   }
 
   var borderRadius: Double? {
     didSet {
       guard oldValue != borderRadius else { return }
-      overlayView.borderRadius = CGFloat(borderRadius ?? Self.defaultBorderRadius)
+      spotlightView.borderRadius = CGFloat(borderRadius ?? Self.defaultBorderRadius)
     }
   }
 
   var padding: Double? {
     didSet {
       guard oldValue != padding else { return }
-      overlayView.padding = CGFloat(padding ?? Self.defaultPadding)
+      spotlightView.padding = CGFloat(padding ?? Self.defaultPadding)
     }
   }
 
   var borderWidth: Double? {
     didSet {
       guard oldValue != borderWidth else { return }
-      overlayView.borderWidth = CGFloat(borderWidth ?? Self.defaultBorderWidth)
+      spotlightView.borderWidth = CGFloat(borderWidth ?? Self.defaultBorderWidth)
     }
   }
 
   var borderColor: String? {
     didSet {
       guard oldValue != borderColor else { return }
-      overlayView.borderColor = borderColor ?? Self.defaultBorderColor
+      spotlightView.borderColor = borderColor ?? Self.defaultBorderColor
     }
   }
 
   var allowOverlayClick: Bool? {
     didSet {
       guard oldValue != allowOverlayClick else { return }
-      overlayView.allowOverlayClick = allowOverlayClick ?? Self.defaultAllowOverlayClick
+      spotlightView.allowOverlayClick = allowOverlayClick ?? Self.defaultAllowOverlayClick
     }
   }
 
@@ -71,7 +82,7 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
 
   var onBackdropPress: (() -> Void)? {
     didSet {
-      overlayView.onBackdropPress = onBackdropPress
+      spotlightView.onBackdropPress = onBackdropPress
     }
   }
 
@@ -94,7 +105,7 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
       )
 
       addOverlayToWindow()
-      overlayView.setHighlight(
+      spotlightView.setHighlight(
         rect,
         animated: false
       )
@@ -128,7 +139,7 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
       )
 
       addOverlayToWindow()
-      overlayView.setHighlight(
+      spotlightView.setHighlight(
         rect,
         animated: true,
         duration: durationMs / 1000.0
@@ -148,7 +159,7 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
   func clear() throws {
     DispatchQueue.main.async { [weak self] in
       guard let self else { return }
-      overlayView.clear()
+      spotlightView.clear()
       removeOverlayFromWindow()
     }
   }
@@ -165,24 +176,25 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
     guard let window = anchorView.window else { return }
     attachedWindow = window
 
-    overlayView.frame = window.bounds
-    overlayView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-    overlayView.dimOpacity = CGFloat(dimOpacity ?? Self.defaultDimOpacity)
-    overlayView.borderRadius = CGFloat(borderRadius ?? Self.defaultBorderRadius)
-    overlayView.padding = CGFloat(padding ?? Self.defaultPadding)
-    overlayView.borderWidth = CGFloat(borderWidth ?? Self.defaultBorderWidth)
-    overlayView.borderColor = borderColor ?? Self.defaultBorderColor
-    overlayView.allowOverlayClick = allowOverlayClick ?? Self.defaultAllowOverlayClick
-    overlayView.onBackdropPress = onBackdropPress
+    spotlightView.frame = window.bounds
+    spotlightView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    spotlightView.dimOpacity = CGFloat(dimOpacity ?? Self.defaultDimOpacity)
+    spotlightView.borderRadius = CGFloat(borderRadius ?? Self.defaultBorderRadius)
+    spotlightView.padding = CGFloat(padding ?? Self.defaultPadding)
+    spotlightView.borderWidth = CGFloat(borderWidth ?? Self.defaultBorderWidth)
+    spotlightView.borderColor = borderColor ?? Self.defaultBorderColor
+    spotlightView.allowOverlayClick = allowOverlayClick ?? Self.defaultAllowOverlayClick
+    spotlightView.onBackdropPress = onBackdropPress
 
-    window.addSubview(overlayView)
+    window.addSubview(spotlightView)
+    
     overlayAdded = true
   }
 
   private func removeOverlayFromWindow() {
     guard overlayAdded else { return }
     overlayAdded = false
-    overlayView.removeFromSuperview()
+    spotlightView.removeFromSuperview()
     attachedWindow = nil
   }
 
