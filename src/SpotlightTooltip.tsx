@@ -29,11 +29,9 @@ export interface SpotlightTooltipProps {
   gap?: number;
 
   /**
-   * Called when the user taps the dim backdrop.
-   *
-   * On Android this is handled by an in-tree Pressable.
-   * On iOS the native overlay intercepts backdrop taps — pass the same
-   * callback to <Spotlight onBackdropPress={…}> for iOS support.
+   * Called when the user taps the dim backdrop outside the cutout and tooltip.
+   * Wire this to spotlight.clear() or tour.stop() to dismiss.
+   * No need to also pass this to <Spotlight> — it is registered automatically.
    */
   onBackdropPress?: () => void;
 
@@ -65,7 +63,7 @@ export interface SpotlightTooltipProps {
  * return (
  *   <>
  *     <YourContent />
- *     <Spotlight controls={spotlight} dimOpacity={0.68} onBackdropPress={spotlight.clear} />
+ *     <Spotlight controls={spotlight} dimOpacity={0.68} />
  *     <SpotlightTooltip controls={spotlight} onBackdropPress={spotlight.clear}>
  *       <Text>Here's a tip!</Text>
  *       <Button title="Got it" onPress={spotlight.clear} />
@@ -86,6 +84,17 @@ export function SpotlightTooltip({
   const { targetRect } = controls;
   const tooltipRef = useRef<View>(null);
   const [visible, setVisible] = useState(false);
+
+  // Keep a stable ref so the registration closure always calls the latest handler.
+  const onBackdropPressRef = useRef(onBackdropPress);
+  useEffect(() => { onBackdropPressRef.current = onBackdropPress; });
+
+  // Register with controls so <Spotlight>'s native callback fires this on iOS
+  // without requiring the user to duplicate onBackdropPress on <Spotlight>.
+  useEffect(() => {
+    controls._backdropPressRef.current = () => onBackdropPressRef.current?.();
+    return () => { controls._backdropPressRef.current = undefined; };
+  }, [controls._backdropPressRef]);
 
   const measureAndPunch = useCallback(() => {
     const node = tooltipRef.current;

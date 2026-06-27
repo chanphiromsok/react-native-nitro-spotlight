@@ -82,11 +82,13 @@ export function Spotlight({
   const [spotlightInstance, setSpotlightInstance] =
     useState<SpotlightRef | null>(null);
 
-  // Stable refs so the callback() wrapper below doesn't change identity on every render.
+  // Stable refs so callback() wrappers below don't change identity on every render.
   const onTargetLayoutRef = useRef(onTargetLayout);
+  const onBackdropPressRef = useRef(onBackdropPress);
   const controlsRef = useRef(controls);
   useEffect(() => {
     onTargetLayoutRef.current = onTargetLayout;
+    onBackdropPressRef.current = onBackdropPress;
     controlsRef.current = controls;
   });
 
@@ -97,6 +99,14 @@ export function Spotlight({
   const handleTargetLayout = useCallback((rect: Rect) => {
     controlsRef.current?._onTargetLayout(rect);
     onTargetLayoutRef.current?.(rect);
+  }, []);
+
+  // Merges the Spotlight-level onBackdropPress prop with any handler registered
+  // by <SpotlightTooltip> via controls._backdropPressRef, so iOS only needs one
+  // native callback and the tooltip's handler fires automatically.
+  const handleBackdropPress = useCallback(() => {
+    controlsRef.current?._backdropPressRef?.current?.();
+    onBackdropPressRef.current?.();
   }, []);
 
   useEffect(() => {
@@ -120,7 +130,7 @@ export function Spotlight({
       borderWidth={borderWidth}
       borderColor={borderColor}
       allowOverlayClick={allowOverlayClick}
-      onBackdropPress={callback(onBackdropPress)}
+      onBackdropPress={callback(handleBackdropPress)}
       onTargetLayout={callback(handleTargetLayout)}
       pointerEvents="none"
       style={[
