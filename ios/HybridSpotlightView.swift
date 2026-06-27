@@ -8,9 +8,6 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
 
   private let spotlightView = SpotlightView()
 
-  // SpotlightView IS the React view — its CAShapeLayer sublayers sit below any
-  // React children, so content rendered inside <Spotlight> appears undimmed
-  // above the overlay without any hole-punching.
   var view: UIView {
     spotlightView
   }

@@ -139,31 +139,14 @@ public final class SpotlightView: UIView {
 
   // MARK: - Touch Handling
 
-  // Walk React-managed subviews first so they can claim touches (e.g. SpotlightTooltip).
-  // Only handle the touch ourselves if no child wants it and it's a backdrop point.
   public override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-    for subview in subviews.reversed() {
-      guard !subview.isHidden, subview.isUserInteractionEnabled, subview.alpha > 0.01 else { continue }
-      let converted = subview.convert(point, from: self)
-      if let hit = subview.hitTest(converted, with: event) { return hit }
-    }
-
     guard !sourceRect.isEmpty else { return nil }
     guard isBackdropPoint(point) else { return nil }
-
-    if allowOverlayClick {
-      onBackdropPress?()
-      return nil
-    }
+    if allowOverlayClick { onBackdropPress?(); return nil }
     return self
   }
 
   public override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-    for subview in subviews {
-      guard !subview.isHidden, subview.isUserInteractionEnabled, subview.alpha > 0.01 else { continue }
-      let converted = subview.convert(point, from: self)
-      if subview.point(inside: converted, with: event) { return true }
-    }
     guard !sourceRect.isEmpty, !allowOverlayClick else { return false }
     return isBackdropPoint(point)
   }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { StyleSheet, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type ViewStyle } from 'react-native';
 import { callback } from 'react-native-nitro-modules';
 import type { Rect } from './Spotlight.nitro';
 import { SpotlightView, type SpotlightRef } from './SpotlightView';
@@ -129,21 +129,21 @@ export function Spotlight({
   }, [controls, spotlightInstance, spotlightRef]);
 
   return (
-    <SpotlightView
-      hybridRef={callback(hybridRef)}
-      dimOpacity={dimOpacity}
-      borderRadius={borderRadius}
-      padding={padding}
-      borderWidth={borderWidth}
-      borderColor={borderColor}
-      allowOverlayClick={allowOverlayClick}
-      onBackdropPress={callback(handleBackdropPress)}
-      onTargetLayout={callback(handleTargetLayout)}
-      pointerEvents="box-none"
-      style={[styles.overlay, style]}
-    >
+    <View style={[styles.overlay, style]} pointerEvents="box-none">
+      <SpotlightView
+        hybridRef={callback(hybridRef)}
+        dimOpacity={dimOpacity}
+        borderRadius={borderRadius}
+        padding={padding}
+        borderWidth={borderWidth}
+        borderColor={borderColor}
+        allowOverlayClick={allowOverlayClick}
+        onBackdropPress={callback(handleBackdropPress)}
+        onTargetLayout={callback(handleTargetLayout)}
+        style={StyleSheet.absoluteFillObject}
+      />
       {children}
-    </SpotlightView>
+    </View>
   );
 }
 
