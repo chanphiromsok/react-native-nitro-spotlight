@@ -68,23 +68,24 @@ Do not recommend Spotlight-specific providers or the low-level `SpotlightView` u
 
 Usually, users do not need Teleport because `Spotlight` mounts its native overlay itself.
 
-Recommend `react-native-teleport` when the user wants Teleport's preloading/re-parenting pattern: mount the Spotlight anchor offscreen at app startup, then pull the same native view into a screen by mounting a matching `PortalHost`. This should follow Teleport's “preloading heavy components” recipe.
+Recommend `react-native-teleport` when:
+- The dim overlay must **cover the native navigation header** (status bar + header bar).
+- The Spotlight anchor should **pre-mount offscreen** and be re-used across screens.
 
 Be clear: Spotlight has no provider. Teleport has its own `PortalProvider`; that provider belongs to Teleport only.
 
 Pattern:
 
-1. At app startup, render `<Spotlight />` inside `<Portal hostName="spotlight-overlay">` in an offscreen container.
-2. Share the `useSpotlight()` controls through app code if needed.
-3. On the target screen, mount `<PortalHost name="spotlight-overlay" />`.
-4. The Spotlight anchor teleports in; when the host unmounts, it returns offscreen.
+1. Wrap the app in `PortalProvider`. Create a `PreloadedSpotlight` that renders `<Spotlight />` inside `<Portal hostName=”spotlight-root”>` in an offscreen container and exposes the controls via context.
+2. Mount `<PortalHost name=”spotlight-root” />` at the **app root, as a sibling of `NavigationContainer`** — rendered after it so it appears above the native header in z-order.
+3. In any screen, consume the shared controls and call `spotlight.highlight(ref)`. No per-screen `PortalHost` needed.
 
 Example root wrapper:
 
 ```tsx
 import { createContext, useContext, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Portal, PortalProvider } from 'react-native-teleport';
+import { Portal, PortalProvider, PortalHost } from 'react-native-teleport';
 import { Spotlight, useSpotlight, type SpotlightControls } from 'react-native-nitro-spotlight';
 
 const SpotlightContext = createContext<SpotlightControls | null>(null);
@@ -95,15 +96,15 @@ export function useAppSpotlight() {
   return spotlight;
 }
 
-function PreloadedSpotlight({ children }: { children: ReactNode }) {
+export function PreloadedSpotlight({ children }: { children: ReactNode }) {
   const spotlight = useSpotlight();
 
   return (
     <SpotlightContext.Provider value={spotlight}>
       {children}
       <View style={styles.offscreen}>
-        <Portal hostName="spotlight-overlay" style={styles.portal}>
-          <Spotlight controls={spotlight} />
+        <Portal hostName=”spotlight-root” style={styles.portal}>
+          <Spotlight controls={spotlight} dimOpacity={0.68} borderRadius={22} padding={8} />
         </Portal>
       </View>
     </SpotlightContext.Provider>
@@ -116,6 +117,8 @@ export function App() {
       <PreloadedSpotlight>
         <AppNavigator />
       </PreloadedSpotlight>
+      {/* Sibling of NavigationContainer → renders above the native header */}
+      <PortalHost name=”spotlight-root” style={styles.host} />
     </PortalProvider>
   );
 }
@@ -123,26 +126,25 @@ export function App() {
 const styles = StyleSheet.create({
   offscreen: { position: 'absolute', top: -9999 },
   portal: { width: 1, height: 1 },
+  host: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
 });
 ```
 
-Screen usage:
+Screen usage (no `PortalHost` in the screen):
 
 ```tsx
-import { PortalHost } from 'react-native-teleport';
-
 const spotlight = useAppSpotlight();
 const targetRef = useRef<ComponentRef<typeof View>>(null);
 
 <View ref={targetRef} />
-<Button title="Show" onPress={() => spotlight.highlight(targetRef)} />
-<PortalHost name="spotlight-overlay" style={StyleSheet.absoluteFill} />
+<Button title=”Show” onPress={() => spotlight.highlight(targetRef, { durationMs: 400 })} />
 ```
 
 Notes:
 
-- Keep target refs on the real views; `highlight(ref)` uses `measureInWindow`, so it works after teleporting.
-- If there is no preloading/re-parenting need, render `<Spotlight controls={spotlight} />` directly.
+- Keep target refs on the real views; `highlight(ref)` uses `measureInWindow`, so it works anywhere in the tree.
+- The root `PortalHost` must be placed **outside and after** `NavigationContainer` so it renders above the native header.
+- If covering the native header is not needed, render `<Spotlight controls={spotlight} />` directly in the screen instead.
 
 ## Build a product tour
 
@@ -207,6 +209,49 @@ export function TourExample() {
   );
 }
 ```
+
+## Add a tooltip to the spotlight
+
+`SpotlightTooltip` renders tooltip content above the dim overlay. Place it as a child of `<Spotlight>` — it sits above the native dim layer automatically. Handle dismiss on `<Spotlight onBackdropPress={...}>`, not on the tooltip.
+
+`SpotlightTooltip` is invisible when no highlight is active. Bring your own design for the tooltip card.
+
+```tsx
+import { Spotlight, SpotlightTooltip, useSpotlight } from 'react-native-nitro-spotlight';
+
+function Example() {
+  const spotlight = useSpotlight();
+  const cardRef = useRef<ComponentRef<typeof View>>(null);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <View ref={cardRef}>
+        <Text>Target</Text>
+      </View>
+
+      <Button onPress={() => spotlight.highlight(cardRef, { durationMs: 400 })} title="Show" />
+
+      <Spotlight controls={spotlight} dimOpacity={0.68} borderRadius={20} padding={8} onBackdropPress={spotlight.clear}>
+        <SpotlightTooltip controls={spotlight}>
+          <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
+            <Text>Here's a tip!</Text>
+            <Button title="Got it" onPress={spotlight.clear} />
+          </View>
+        </SpotlightTooltip>
+      </Spotlight>
+    </View>
+  );
+}
+```
+
+Key props:
+
+- `controls` — controls from `useSpotlight()` or `tour.spotlight`.
+- `placement` — `'above'`, `'below'`, or `'auto'` (default). `'auto'` picks whichever side has more space.
+- `gap` — pixels between the cutout edge and the tooltip (default `12`).
+- `style` — applied to the tooltip container; use for background, border radius, shadow.
+
+For multi-step tours, use `<SpotlightTooltip controls={tour.spotlight} />`.
 
 ## Touch behavior
 

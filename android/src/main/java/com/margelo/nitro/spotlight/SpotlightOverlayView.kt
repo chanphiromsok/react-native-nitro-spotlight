@@ -254,13 +254,9 @@ internal class SpotlightOverlayView(
   // pass through to RN underneath or be blocked by the overlay. Carry that
   // decision through the rest of the gesture.
   //
-  // When there is no active spotlight hasActiveSpotlight() == false, so
-  // dispatchTouchEvent returns false immediately — but this is a belt-and-
-  // suspenders guard. The real guarantee that the overlay never steals
-  // touches when idle is that HybridSpotlightView removes it from the
-  // decor-view entirely (removeFromDecor / addToDecor) rather than hiding it.
-  // A MATCH_PARENT view that stays in the hierarchy will always win the
-  // ViewGroup bounds-check even when INVISIBLE or isEnabled=false.
+  // When there is no active spotlight, dispatchTouchEvent returns false
+  // immediately so Android continues hit-testing the next view in the
+  // hierarchy — touches fall through to React Native content underneath.
   // -------------------------------------------------------------------------
 
   override fun onInterceptTouchEvent(event: MotionEvent): Boolean = false
@@ -279,9 +275,9 @@ internal class SpotlightOverlayView(
 
         blockingTouch = !allowOverlayClick && isBackdropTouch
         // Return false for hole touches, and for all touches when allowOverlayClick
-        // is true, so the decor-view continues its normal child hit-test and
-        // delivers the gesture to RN underneath. onBackdropPress still fires for
-        // backdrop touches even in pass-through mode.
+        // is true, so Android continues hit-testing and delivers the gesture to
+        // RN underneath. onBackdropPress still fires for backdrop touches even
+        // in pass-through mode.
         blockingTouch
       }
       MotionEvent.ACTION_UP -> {
@@ -310,6 +306,28 @@ internal class SpotlightOverlayView(
 
   private fun isTouchInsideHole(touchX: Int, touchY: Int): Boolean =
     !holeRegion.isEmpty && holeRegion.contains(touchX, touchY)
+
+  /**
+   * Convert a React Native measureInWindow rect into this overlay's local
+   * DIP coordinates. Used by HybridSpotlightView to report onTargetLayout in
+   * the same coordinate space that SpotlightTooltip uses for positioning.
+   *
+   * On non-edge-to-edge devices the result equals the input (overlay top ==
+   * visibleWindowFrame.top). On edge-to-edge devices (mandatory on Android 15+)
+   * the overlay sits at physical y=0 while measureInWindow is relative to
+   * visibleWindowFrame.top, so this adds the status-bar height to x/y, aligning
+   * the rect with the overlay's local origin.
+   */
+  fun windowDpToLocalDip(windowDp: RectF): RectF {
+    val localPx = windowDpToLocalPx(windowDp)
+    if (localPx.isEmpty) return RectF()
+    return RectF(
+      localPx.left / density,
+      localPx.top / density,
+      localPx.right / density,
+      localPx.bottom / density,
+    )
+  }
 
   /**
    * Convert a React Native measureInWindow rect into this overlay's local
@@ -359,7 +377,30 @@ internal class SpotlightOverlayView(
     )
 
     holePath.addRoundRect(cutRect, radius, radius, Path.Direction.CW)
-    overlayPath.addRect(0f, 0f, width.toFloat(), height.toFloat(), Path.Direction.CW)
+
+    // Use the physical screen bounds in local coordinates as the outer EVEN_ODD
+    // rect. This is equivalent to iOS's window.map { convert($0.bounds, from: nil) }.
+    //
+    // Using view bounds (0, 0, width, height) fails when the view is inside the
+    // React tree below the nav header — the hole's top (padded) can be negative,
+    // causing EVEN_ODD inversion.
+    //
+    // Using visibleWindowFrame fails when the view is at y=0 (root-level teleport) —
+    // visibleWindowFrame.top = statusBarHeight, so outerTop > 0 and the status bar
+    // strip is left outside the outer rect (not dimmed).
+    //
+    // Physical screen bounds converted to local space always contain the hole and
+    // correctly dim the full screen regardless of where the view is positioned.
+    getLocationOnScreen(overlayOrigin)
+    val screenW = resources.displayMetrics.widthPixels.toFloat()
+    val screenH = resources.displayMetrics.heightPixels.toFloat()
+    overlayPath.addRect(
+      -overlayOrigin[0].toFloat(),
+      -overlayOrigin[1].toFloat(),
+      screenW - overlayOrigin[0],
+      screenH - overlayOrigin[1],
+      Path.Direction.CW,
+    )
     overlayPath.addPath(holePath)
 
     if (!allowOverlayClick) {
