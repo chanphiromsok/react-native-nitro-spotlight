@@ -355,7 +355,22 @@ internal class SpotlightOverlayView(
     )
 
     holePath.addRoundRect(cutRect, radius, radius, Path.Direction.CW)
-    overlayPath.addRect(0f, 0f, width.toFloat(), height.toFloat(), Path.Direction.CW)
+
+    // Use the window's visible frame in local coordinates rather than the view's
+    // own bounds (0..width, 0..height). Now that SpotlightOverlayView lives inside
+    // the React tree (below nav header/padding), windowDpToLocalPx can produce a
+    // hole whose top is slightly negative — padding around a card near the view's
+    // top edge extends above y=0. A zero-based outer rect then leaves that strip
+    // outside the outer path, so EVEN_ODD fills the hole instead of the background.
+    // Converting the window frame to local coords gives a rect that starts above y=0
+    // and is guaranteed to contain the hole, matching the iOS window-bounds fix.
+    getLocationOnScreen(overlayOrigin)
+    getWindowVisibleDisplayFrame(visibleWindowFrame)
+    val outerLeft = (visibleWindowFrame.left - overlayOrigin[0]).toFloat()
+    val outerTop  = (visibleWindowFrame.top  - overlayOrigin[1]).toFloat()
+    val outerRight  = (visibleWindowFrame.right  - overlayOrigin[0]).toFloat()
+    val outerBottom = (visibleWindowFrame.bottom - overlayOrigin[1]).toFloat()
+    overlayPath.addRect(outerLeft, outerTop, outerRight, outerBottom, Path.Direction.CW)
     overlayPath.addPath(holePath)
 
     if (!allowOverlayClick) {
