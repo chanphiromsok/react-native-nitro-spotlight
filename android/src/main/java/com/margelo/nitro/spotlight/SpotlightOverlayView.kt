@@ -309,6 +309,28 @@ internal class SpotlightOverlayView(
 
   /**
    * Convert a React Native measureInWindow rect into this overlay's local
+   * DIP coordinates. Used by HybridSpotlightView to report onTargetLayout in
+   * the same coordinate space that SpotlightTooltip uses for positioning.
+   *
+   * On non-edge-to-edge devices the result equals the input (overlay top ==
+   * visibleWindowFrame.top). On edge-to-edge devices (mandatory on Android 15+)
+   * the overlay sits at physical y=0 while measureInWindow is relative to
+   * visibleWindowFrame.top, so this adds the status-bar height to x/y, aligning
+   * the rect with the overlay's local origin.
+   */
+  fun windowDpToLocalDip(windowDp: RectF): RectF {
+    val localPx = windowDpToLocalPx(windowDp)
+    if (localPx.isEmpty) return RectF()
+    return RectF(
+      localPx.left / density,
+      localPx.top / density,
+      localPx.right / density,
+      localPx.bottom / density,
+    )
+  }
+
+  /**
+   * Convert a React Native measureInWindow rect into this overlay's local
    * pixel coordinates.
    *
    * Android RN returns measureInWindow in DIPs and relative to the visible

@@ -2,6 +2,7 @@ package com.margelo.nitro.spotlight
 
 import android.graphics.Color
 import android.graphics.Rect
+import android.graphics.RectF
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -143,7 +144,7 @@ class HybridSpotlightView(
         heightDp = height.toFloat(),
         animated = false,
       )
-      onTargetLayout?.invoke(com.margelo.nitro.spotlight.Rect(x = x, y = y, width = width, height = height))
+      onTargetLayout?.invoke(localDipRect(x, y, width, height))
       showHeaderDim()
     }
   }
@@ -164,7 +165,7 @@ class HybridSpotlightView(
         animated   = true,
         durationMs = durationMs.toLong(),
       )
-      onTargetLayout?.invoke(com.margelo.nitro.spotlight.Rect(x = x, y = y, width = width, height = height))
+      onTargetLayout?.invoke(localDipRect(x, y, width, height))
       showHeaderDim()
     }
   }
@@ -200,6 +201,35 @@ class HybridSpotlightView(
       spotlightView.clear(durationMs = 0L)
       hideHeaderDim()
       decorView = null
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Coordinate helpers
+  // -------------------------------------------------------------------------
+
+  /**
+   * Convert a measureInWindow rect (DIP relative to visibleWindowFrame) into
+   * a Rect expressed in the SpotlightOverlayView's local DIP coordinates.
+   *
+   * On non-edge-to-edge devices the values are identical. On edge-to-edge
+   * (mandatory on Android 15+) the overlay sits at physical y=0 while
+   * measureInWindow is relative to visibleWindowFrame.top, so y is offset by
+   * the status-bar height. Using local DIP ensures SpotlightTooltip positions
+   * correctly regardless of windowing mode.
+   */
+  private fun localDipRect(x: Double, y: Double, width: Double, height: Double): com.margelo.nitro.spotlight.Rect {
+    val windowDp = RectF(x.toFloat(), y.toFloat(), (x + width).toFloat(), (y + height).toFloat())
+    val local = spotlightView.windowDpToLocalDip(windowDp)
+    return if (local.isEmpty) {
+      com.margelo.nitro.spotlight.Rect(x = x, y = y, width = width, height = height)
+    } else {
+      com.margelo.nitro.spotlight.Rect(
+        x      = local.left.toDouble(),
+        y      = local.top.toDouble(),
+        width  = local.width().toDouble(),
+        height = local.height().toDouble(),
+      )
     }
   }
 
