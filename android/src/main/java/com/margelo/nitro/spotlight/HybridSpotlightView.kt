@@ -1,6 +1,10 @@
 package com.margelo.nitro.spotlight
 
+import android.graphics.Color
+import android.graphics.Rect
 import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.annotation.Keep
 import com.facebook.common.internal.DoNotStrip
 import com.facebook.react.bridge.UiThreadUtil
@@ -24,6 +28,16 @@ class HybridSpotlightView(
    * matching the iOS architecture exactly.
    */
   private val spotlightView = SpotlightOverlayView(context)
+
+  /**
+   * Covers the area above the React tree (status bar + native navigation
+   * header) so the dim feels full-screen. Added to the decor-view only while
+   * a spotlight is active; removed on clear(). The screen-body overlay with
+   * the hole stays in the React tree so tooltips can render above it.
+   */
+  private val headerDimView = View(context)
+  private var headerDimAdded = false
+  private var decorView: ViewGroup? = null
 
   // -------------------------------------------------------------------------
   // Property backing fields
@@ -51,7 +65,12 @@ class HybridSpotlightView(
     set(value) {
       if (dimOpacityValue == value) return
       dimOpacityValue = value
-      UiThreadUtil.runOnUiThread { spotlightView.dimOpacity = (value ?: DEFAULT_DIM_OPACITY).toFloat() }
+      UiThreadUtil.runOnUiThread {
+        spotlightView.dimOpacity = (value ?: DEFAULT_DIM_OPACITY).toFloat()
+        if (headerDimAdded) {
+          headerDimView.setBackgroundColor(dimArgb(value ?: DEFAULT_DIM_OPACITY))
+        }
+      }
     }
 
   override var borderRadius: Double?
@@ -94,12 +113,16 @@ class HybridSpotlightView(
       UiThreadUtil.runOnUiThread { spotlightView.allowOverlayClick = value ?: DEFAULT_ALLOW_OVERLAY_CLICK }
     }
 
-  override var onTargetLayout: ((Rect) -> Unit)? = null
+  override var onTargetLayout: ((com.margelo.nitro.spotlight.Rect) -> Unit)? = null
 
   override var onBackdropPress: (() -> Unit)? = null
     set(value) {
       field = value
-      UiThreadUtil.runOnUiThread { spotlightView.onBackdropPress = value }
+      UiThreadUtil.runOnUiThread {
+        spotlightView.onBackdropPress = value
+        // Keep header dim click handler in sync.
+        headerDimView.setOnClickListener(if (value != null) View.OnClickListener { value() } else null)
+      }
     }
 
   // -------------------------------------------------------------------------
@@ -120,7 +143,8 @@ class HybridSpotlightView(
         heightDp = height.toFloat(),
         animated = false,
       )
-      onTargetLayout?.invoke(Rect(x = x, y = y, width = width, height = height))
+      onTargetLayout?.invoke(com.margelo.nitro.spotlight.Rect(x = x, y = y, width = width, height = height))
+      showHeaderDim()
     }
   }
 
@@ -140,13 +164,15 @@ class HybridSpotlightView(
         animated   = true,
         durationMs = durationMs.toLong(),
       )
-      onTargetLayout?.invoke(Rect(x = x, y = y, width = width, height = height))
+      onTargetLayout?.invoke(com.margelo.nitro.spotlight.Rect(x = x, y = y, width = width, height = height))
+      showHeaderDim()
     }
   }
 
   override fun clear() {
     UiThreadUtil.runOnUiThread {
       spotlightView.clear(durationMs = 0L)
+      hideHeaderDim()
     }
   }
 
@@ -172,8 +198,57 @@ class HybridSpotlightView(
       spotlightView.allowOverlayClick = DEFAULT_ALLOW_OVERLAY_CLICK
       spotlightView.onBackdropPress = null
       spotlightView.clear(durationMs = 0L)
+      hideHeaderDim()
+      decorView = null
     }
   }
+
+  // -------------------------------------------------------------------------
+  // Header dim: covers status bar + native nav header in decor-view
+  // -------------------------------------------------------------------------
+
+  private fun showHeaderDim() {
+    val dv = context.currentActivity?.window?.decorView as? ViewGroup ?: return
+    decorView = dv
+
+    // Measure how many pixels sit above the React-managed spotlightView
+    // (status bar height + native navigation header height).
+    val origin = IntArray(2)
+    val frame = Rect()
+    spotlightView.getLocationOnScreen(origin)
+    spotlightView.getWindowVisibleDisplayFrame(frame)
+
+    // origin[1] is the screen-y of spotlightView's top edge.
+    // Everything from y=0 to y=origin[1] is above the React tree.
+    val coveredHeight = origin[1]
+    if (coveredHeight <= 0) return
+
+    // Update color in case dimOpacity changed since last time.
+    headerDimView.setBackgroundColor(dimArgb(dimOpacityValue ?: DEFAULT_DIM_OPACITY))
+    headerDimView.isClickable = true
+    headerDimView.setOnClickListener { onBackdropPress?.invoke() }
+
+    if (headerDimAdded) return
+
+    dv.addView(
+      headerDimView,
+      FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, coveredHeight),
+    )
+    headerDimAdded = true
+  }
+
+  private fun hideHeaderDim() {
+    if (!headerDimAdded) return
+    headerDimAdded = false
+    val dv = decorView ?: return
+    // Post so we never remove a child during the decor-view's own layout traversal.
+    dv.post {
+      if (headerDimView.parent === dv) dv.removeView(headerDimView)
+    }
+  }
+
+  private fun dimArgb(opacity: Double): Int =
+    Color.argb((opacity.coerceIn(0.0, 1.0) * 255).toInt(), 0, 0, 0)
 
   companion object {
     private const val DEFAULT_DIM_OPACITY = 0.55
