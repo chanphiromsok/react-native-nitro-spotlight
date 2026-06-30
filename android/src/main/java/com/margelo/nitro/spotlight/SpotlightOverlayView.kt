@@ -93,7 +93,7 @@ internal class SpotlightOverlayView(
   private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
     color = parseBorderColor(borderColor)
     style = Paint.Style.STROKE
-    strokeWidth = borderWidth.coerceAtLeast(0f) * cachedDensity
+    strokeWidth = borderWidth.coerceAtLeast(0f) * resources.displayMetrics.density
   }
 
   // -------------------------------------------------------------------------
