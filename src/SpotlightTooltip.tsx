@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useCallback, useMemo } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -69,21 +69,20 @@ export function SpotlightTooltip({
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { targetRect } = controls;
 
-  if (!targetRect) return null;
+  const tooltipStyle = useMemo(() => {
+    if (!targetRect) return null;
+    const resolved = resolvePlacement(placement, targetRect, screenHeight, gap);
+    return computeTooltipStyle(resolved, targetRect, screenWidth, screenHeight, gap);
+  }, [targetRect, placement, gap, screenWidth, screenHeight]);
 
-  const resolved = resolvePlacement(placement, targetRect, screenHeight, gap);
-  const tooltipStyle = computeTooltipStyle(
-    resolved,
-    targetRect,
-    screenWidth,
-    screenHeight,
-    gap
-  );
+  const noop = useCallback(() => {}, []);
+
+  if (!targetRect || !tooltipStyle) return null;
 
   return (
     <View style={[styles.tooltip, tooltipStyle, style]} pointerEvents="box-none">
       {/* Pressable consumes the touch so it doesn't reach SpotlightView's backdrop handler. */}
-      <Pressable onPress={() => {}}>{children}</Pressable>
+      <Pressable onPress={noop}>{children}</Pressable>
     </View>
   );
 }

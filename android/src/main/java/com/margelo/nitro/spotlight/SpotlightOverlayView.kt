@@ -85,7 +85,7 @@ internal class SpotlightOverlayView(
   private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
     color = parseBorderColor(borderColor)
     style = Paint.Style.STROKE
-    strokeWidth = borderWidth.coerceAtLeast(0f) * density
+    strokeWidth = borderWidth.coerceAtLeast(0f) * cachedDensity
   }
 
   // -------------------------------------------------------------------------
@@ -97,8 +97,14 @@ internal class SpotlightOverlayView(
    * (DIP units, as returned by measureInWindow on Android).
    */
   private val windowRectDp = RectF()
-  private val overlayOrigin = IntArray(2)
-  private val visibleWindowFrame = Rect()
+
+  // Cached once per highlight/clear call — refreshed by refreshGeometryCache().
+  // Calling getLocationOnScreen / getWindowVisibleDisplayFrame on every
+  // ValueAnimator frame (60 fps) is expensive; these values don't change
+  // during a 300 ms animation, so we snapshot them once up front.
+  private val cachedOverlayOrigin = IntArray(2)
+  private val cachedVisibleFrame = Rect()
+  private val outerRectPath = Path()
 
   private val currentLocalPx = RectF()
   private val targetLocalPx = RectF()
@@ -123,6 +129,14 @@ internal class SpotlightOverlayView(
   // -------------------------------------------------------------------------
 
   private var blockingTouch = false
+
+  // -------------------------------------------------------------------------
+  // Display-metric cache (refreshed in onLayout)
+  // -------------------------------------------------------------------------
+
+  private var cachedDensity: Float = resources.displayMetrics.density
+  private var cachedScreenW: Float = resources.displayMetrics.widthPixels.toFloat()
+  private var cachedScreenH: Float = resources.displayMetrics.heightPixels.toFloat()
 
   // -------------------------------------------------------------------------
   // Init
@@ -170,6 +184,8 @@ internal class SpotlightOverlayView(
     // Guard: if not laid out yet, onLayout will apply windowRectDp.
     if (width == 0 || height == 0) return
 
+    // Snapshot geometry once — avoids repeated system calls per animation frame.
+    refreshGeometryCache()
     targetLocalPx.set(windowDpToLocalPx(windowRectDp))
 
     if (!animated || durationMs <= 0L) {
@@ -202,6 +218,9 @@ internal class SpotlightOverlayView(
       return
     }
 
+    // Snapshot geometry once before the collapse animation starts.
+    refreshGeometryCache()
+
     val centerX = currentLocalPx.centerX()
     val centerY = currentLocalPx.centerY()
     animateTo(RectF(centerX, centerY, centerX, centerY), durationMs, onFinished)
@@ -214,7 +233,15 @@ internal class SpotlightOverlayView(
   override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
     super.onLayout(changed, left, top, right, bottom)
 
+    // Refresh cheap display-metric cache whenever the view is re-laid-out
+    // (rotation, window resize, density change). The geometry cache
+    // (overlay origin, visible frame, outer rect) is refreshed per highlight.
+    cachedDensity = resources.displayMetrics.density
+    cachedScreenW = resources.displayMetrics.widthPixels.toFloat()
+    cachedScreenH = resources.displayMetrics.heightPixels.toFloat()
+
     if (changed && !windowRectDp.isEmpty) {
+      refreshGeometryCache()
       targetLocalPx.set(windowDpToLocalPx(windowRectDp))
       cancelAnimation()
       currentLocalPx.set(targetLocalPx)
@@ -322,39 +349,61 @@ internal class SpotlightOverlayView(
     val localPx = windowDpToLocalPx(windowDp)
     if (localPx.isEmpty) return RectF()
     return RectF(
-      localPx.left / density,
-      localPx.top / density,
-      localPx.right / density,
-      localPx.bottom / density,
+      localPx.left / cachedDensity,
+      localPx.top / cachedDensity,
+      localPx.right / cachedDensity,
+      localPx.bottom / cachedDensity,
     )
   }
 
   /**
    * Convert a React Native measureInWindow rect into this overlay's local
-   * pixel coordinates.
+   * pixel coordinates using the cached geometry snapshot.
    *
    * Android RN returns measureInWindow in DIPs and relative to the visible
    * window frame, while Android Views draw/hit-test in physical pixels and
    * getLocationOnScreen() is screen-space. Reconstruct screen pixels by
    * multiplying by density and adding the visible window frame offset, then
    * subtract this overlay's screen origin.
+   *
+   * Must call refreshGeometryCache() before using this during an animation.
    */
   private fun windowDpToLocalPx(windowDp: RectF): RectF = traceSection(TRACE_WINDOW_TO_LOCAL) {
     if (windowDp.isEmpty) return@traceSection RectF()
 
-    getLocationOnScreen(overlayOrigin)
-    getWindowVisibleDisplayFrame(visibleWindowFrame)
-
-    val screenLeft = windowDp.left * density + visibleWindowFrame.left
-    val screenTop = windowDp.top * density + visibleWindowFrame.top
-    val screenRight = windowDp.right * density + visibleWindowFrame.left
-    val screenBottom = windowDp.bottom * density + visibleWindowFrame.top
+    val screenLeft = windowDp.left * cachedDensity + cachedVisibleFrame.left
+    val screenTop = windowDp.top * cachedDensity + cachedVisibleFrame.top
+    val screenRight = windowDp.right * cachedDensity + cachedVisibleFrame.left
+    val screenBottom = windowDp.bottom * cachedDensity + cachedVisibleFrame.top
 
     RectF(
-      screenLeft - overlayOrigin[0],
-      screenTop - overlayOrigin[1],
-      screenRight - overlayOrigin[0],
-      screenBottom - overlayOrigin[1],
+      screenLeft - cachedOverlayOrigin[0],
+      screenTop - cachedOverlayOrigin[1],
+      screenRight - cachedOverlayOrigin[0],
+      screenBottom - cachedOverlayOrigin[1],
+    )
+  }
+
+  /**
+   * Snapshot values that require system calls — called once per highlight/clear,
+   * not per animation frame. Eliminates ~2 system calls × 18 frames @ 60 fps
+   * during a typical 300 ms transition.
+   */
+  private fun refreshGeometryCache() {
+    getLocationOnScreen(cachedOverlayOrigin)
+    getWindowVisibleDisplayFrame(cachedVisibleFrame)
+
+    // Pre-build the outer EVEN_ODD rect in local coordinates. This rect
+    // covers the full physical screen and doesn't change during an animation,
+    // so building it here (once) instead of inside rebuildHolePath() removes
+    // a getLocationOnScreen call and two displayMetrics reads per frame.
+    outerRectPath.rewind()
+    outerRectPath.addRect(
+      -cachedOverlayOrigin[0].toFloat(),
+      -cachedOverlayOrigin[1].toFloat(),
+      cachedScreenW - cachedOverlayOrigin[0],
+      cachedScreenH - cachedOverlayOrigin[1],
+      Path.Direction.CW,
     )
   }
 
@@ -366,8 +415,8 @@ internal class SpotlightOverlayView(
 
     if (currentLocalPx.isEmpty || width == 0 || height == 0) return@traceSection
 
-    val pad = padding * density
-    val radius = (borderRadius + padding).coerceAtLeast(0f) * density
+    val pad = padding * cachedDensity
+    val radius = (borderRadius + padding).coerceAtLeast(0f) * cachedDensity
 
     cutRect.set(
       currentLocalPx.left - pad,
@@ -378,29 +427,10 @@ internal class SpotlightOverlayView(
 
     holePath.addRoundRect(cutRect, radius, radius, Path.Direction.CW)
 
-    // Use the physical screen bounds in local coordinates as the outer EVEN_ODD
-    // rect. This is equivalent to iOS's window.map { convert($0.bounds, from: nil) }.
-    //
-    // Using view bounds (0, 0, width, height) fails when the view is inside the
-    // React tree below the nav header — the hole's top (padded) can be negative,
-    // causing EVEN_ODD inversion.
-    //
-    // Using visibleWindowFrame fails when the view is at y=0 (root-level teleport) —
-    // visibleWindowFrame.top = statusBarHeight, so outerTop > 0 and the status bar
-    // strip is left outside the outer rect (not dimmed).
-    //
-    // Physical screen bounds converted to local space always contain the hole and
-    // correctly dim the full screen regardless of where the view is positioned.
-    getLocationOnScreen(overlayOrigin)
-    val screenW = resources.displayMetrics.widthPixels.toFloat()
-    val screenH = resources.displayMetrics.heightPixels.toFloat()
-    overlayPath.addRect(
-      -overlayOrigin[0].toFloat(),
-      -overlayOrigin[1].toFloat(),
-      screenW - overlayOrigin[0],
-      screenH - overlayOrigin[1],
-      Path.Direction.CW,
-    )
+    // Use the pre-built outer rect (physical screen bounds in local coords).
+    // See refreshGeometryCache() for why we use screen bounds instead of
+    // view bounds or visibleWindowFrame.
+    overlayPath.addPath(outerRectPath)
     overlayPath.addPath(holePath)
 
     if (!allowOverlayClick) {
@@ -510,7 +540,7 @@ internal class SpotlightOverlayView(
   }
 
   private fun updateRingStrokeWidth() {
-    ringPaint.strokeWidth = borderWidth.coerceAtLeast(0f) * density
+    ringPaint.strokeWidth = borderWidth.coerceAtLeast(0f) * cachedDensity
   }
 
   private fun dimColor(): Int = Color.argb(
@@ -520,9 +550,6 @@ internal class SpotlightOverlayView(
 
   private fun parseBorderColor(value: String): Int =
     runCatching { Color.parseColor(value) }.getOrDefault(Color.WHITE)
-
-  private val density: Float
-    get() = resources.displayMetrics.density
 
   private companion object {
     private const val TRACE_ON_DRAW = "Spotlight.onDraw"
