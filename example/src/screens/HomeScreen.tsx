@@ -52,6 +52,12 @@ const SCENARIOS: Array<{
     icon: '🪟',
     copy: 'Dim the nav bar too with FullWindowOverlay from react-native-screens.',
   },
+  {
+    name: 'Shape',
+    title: 'Circle cutout',
+    icon: '⭕',
+    copy: 'Use shape="circle" for FABs, avatars and round icon buttons.',
+  },
 ];
 
 export function HomeScreen({

@@ -1,5 +1,9 @@
 import UIKit
 
+enum SpotlightShape: String {
+  case rect
+  case circle
+}
 
 public final class SpotlightView: UIView {
 
@@ -38,6 +42,13 @@ public final class SpotlightView: UIView {
       guard oldValue != borderColor else { return }
       resolvedBorderColor = UIColor.spotlightColor(from: borderColor)
       ringLayer.strokeColor = resolvedBorderColor.cgColor
+      redraw(animated: false)
+    }
+  }
+
+  var shape: SpotlightShape = .rect {
+    didSet {
+      guard oldValue != shape else { return }
       redraw(animated: false)
     }
   }
@@ -216,10 +227,15 @@ public final class SpotlightView: UIView {
     guard !sourceRect.isEmpty else { return nil }
     let local = localRect(from: sourceRect)
     let cutRect = local.insetBy(dx: -padding, dy: -padding)
-    return UIBezierPath(
-      roundedRect: cutRect,
-      cornerRadius: max(borderRadius + padding, 0)
-    )
+    switch shape {
+    case .circle:
+      return UIBezierPath(ovalIn: cutRect)
+    case .rect:
+      return UIBezierPath(
+        roundedRect: cutRect,
+        cornerRadius: max(borderRadius + padding, 0)
+      )
+    }
   }
 
   private func makeOverlayPath(holePath: UIBezierPath?) -> UIBezierPath? {

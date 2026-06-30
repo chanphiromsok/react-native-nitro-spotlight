@@ -45,6 +45,7 @@ class HybridSpotlightView(
   // -------------------------------------------------------------------------
 
   private var dimOpacityValue: Double? = null
+  private var shapeValue: String? = null
   private var borderRadiusValue: Double? = null
   private var paddingValue: Double? = null
   private var borderWidthValue: Double? = null
@@ -72,6 +73,14 @@ class HybridSpotlightView(
           headerDimView.setBackgroundColor(dimArgb(value ?: DEFAULT_DIM_OPACITY))
         }
       }
+    }
+
+  override var shape: String?
+    get() = shapeValue
+    set(value) {
+      if (shapeValue == value) return
+      shapeValue = value
+      UiThreadUtil.runOnUiThread { spotlightView.shape = value ?: DEFAULT_SHAPE }
     }
 
   override var borderRadius: Double?
@@ -185,6 +194,7 @@ class HybridSpotlightView(
     onTargetLayout = null
     onBackdropPress = null
     dimOpacityValue = null
+    shapeValue = null
     borderRadiusValue = null
     paddingValue = null
     borderWidthValue = null
@@ -192,6 +202,7 @@ class HybridSpotlightView(
     allowOverlayClickValue = null
     UiThreadUtil.runOnUiThread {
       spotlightView.dimOpacity = DEFAULT_DIM_OPACITY.toFloat()
+      spotlightView.shape = DEFAULT_SHAPE
       spotlightView.borderRadius = DEFAULT_BORDER_RADIUS.toFloat()
       spotlightView.padding = DEFAULT_PADDING.toFloat()
       spotlightView.borderWidth = DEFAULT_BORDER_WIDTH.toFloat()
@@ -282,6 +293,7 @@ class HybridSpotlightView(
 
   companion object {
     private const val DEFAULT_DIM_OPACITY = 0.55
+    private const val DEFAULT_SHAPE = "rect"
     private const val DEFAULT_BORDER_RADIUS = 12.0
     private const val DEFAULT_PADDING = 6.0
     private const val DEFAULT_BORDER_WIDTH = 1.5

@@ -32,6 +32,14 @@ internal class SpotlightOverlayView(
       invalidate()
     }
 
+  var shape: String = "rect"
+    set(value) {
+      if (field == value) return
+      field = value
+      rebuildHolePath()
+      invalidate()
+    }
+
   var borderRadius: Float = 12f
     set(value) {
       if (field == value) return
@@ -425,7 +433,11 @@ internal class SpotlightOverlayView(
       currentLocalPx.bottom + pad,
     )
 
-    holePath.addRoundRect(cutRect, radius, radius, Path.Direction.CW)
+    if (shape == "circle") {
+      holePath.addOval(cutRect, Path.Direction.CW)
+    } else {
+      holePath.addRoundRect(cutRect, radius, radius, Path.Direction.CW)
+    }
 
     // Use the pre-built outer rect (physical screen bounds in local coords).
     // See refreshGeometryCache() for why we use screen bounds instead of

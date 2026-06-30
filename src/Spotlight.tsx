@@ -5,6 +5,9 @@ import type { Rect } from './Spotlight.nitro';
 import { SpotlightView, type SpotlightRef } from './SpotlightView';
 import type { SpotlightControls } from './useSpotlight';
 
+/** Shape of the cutout hole. */
+export type SpotlightShape = 'rect' | 'circle';
+
 export interface SpotlightComponentProps {
   /** Controls returned by useSpotlight(). Preferred for app code. */
   controls?: SpotlightControls;
@@ -15,7 +18,14 @@ export interface SpotlightComponentProps {
   /** Opacity of the dim overlay. Omitted values are not sent to native. */
   dimOpacity?: number;
 
-  /** Border radius of the cutout hole. Omitted values are not sent to native. */
+  /**
+   * Shape of the cutout hole.
+   * - 'rect' (default): rounded rectangle, respects borderRadius
+   * - 'circle': ellipse inscribed in the target rect, ignores borderRadius
+   */
+  shape?: SpotlightShape;
+
+  /** Border radius of the cutout hole. Ignored when shape is 'circle'. Omitted values are not sent to native. */
   borderRadius?: number;
 
   /** Padding around the target rect. Omitted values are not sent to native. */
@@ -82,6 +92,7 @@ export function Spotlight({
   controls,
   spotlightRef,
   dimOpacity,
+  shape,
   borderRadius,
   padding,
   borderWidth,
@@ -137,6 +148,7 @@ export function Spotlight({
       <SpotlightView
         hybridRef={callback(hybridRef)}
         dimOpacity={dimOpacity}
+        shape={shape}
         borderRadius={borderRadius}
         padding={padding}
         borderWidth={borderWidth}

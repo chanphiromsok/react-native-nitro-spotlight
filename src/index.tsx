@@ -1,6 +1,6 @@
 // Primary API — this is all most consumers need
 export { Spotlight } from './Spotlight';
-export type { SpotlightComponentProps } from './Spotlight';
+export type { SpotlightComponentProps, SpotlightShape } from './Spotlight';
 export { useSpotlight } from './useSpotlight';
 export type { SpotlightControls, HighlightOptions } from './useSpotlight';
 export { SpotlightTooltip } from './SpotlightTooltip';

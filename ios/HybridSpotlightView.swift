@@ -18,6 +18,7 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
 
   func beforeUpdate() {
     spotlightView.dimOpacity = CGFloat(dimOpacity ?? Self.defaultDimOpacity)
+    spotlightView.shape = SpotlightShape(rawValue: shape ?? "rect") ?? .rect
     spotlightView.borderRadius = CGFloat(borderRadius ?? Self.defaultBorderRadius)
     spotlightView.borderColor = borderColor ?? Self.defaultBorderColor
     spotlightView.padding = CGFloat(padding ?? Self.defaultPadding)
@@ -37,6 +38,13 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
     didSet {
       guard oldValue != dimOpacity else { return }
       spotlightView.dimOpacity = CGFloat(dimOpacity ?? Self.defaultDimOpacity)
+    }
+  }
+
+  var shape: String? {
+    didSet {
+      guard oldValue != shape else { return }
+      spotlightView.shape = SpotlightShape(rawValue: shape ?? "rect") ?? .rect
     }
   }
 
@@ -123,6 +131,7 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
   }
 
   private static let defaultDimOpacity = 0.55
+  private static let defaultShape = "rect"
   private static let defaultBorderRadius = 12.0
   private static let defaultPadding = 6.0
   private static let defaultBorderWidth = 1.5

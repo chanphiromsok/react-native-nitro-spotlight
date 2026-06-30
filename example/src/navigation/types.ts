@@ -7,4 +7,5 @@ export type RootStackParamList = {
   Lifecycle: undefined;
   Teleport: undefined;
   FullWindow: undefined;
+  Shape: undefined;
 };
