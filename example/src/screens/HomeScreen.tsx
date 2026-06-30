@@ -58,6 +58,12 @@ const SCENARIOS: Array<{
     icon: '⭕',
     copy: 'Use shape="circle" for FABs, avatars and round icon buttons.',
   },
+  {
+    name: 'Sheet',
+    title: 'Form / bottom sheet',
+    icon: '📋',
+    copy: 'Spotlight inside a form sheet (iOS) or bottom sheet (Android) dialog window.',
+  },
 ];
 
 export function HomeScreen({

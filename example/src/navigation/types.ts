@@ -8,4 +8,5 @@ export type RootStackParamList = {
   Teleport: undefined;
   FullWindow: undefined;
   Shape: undefined;
+  Sheet: undefined;
 };

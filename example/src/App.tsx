@@ -13,6 +13,7 @@ import { ManualScreen } from './screens/ManualScreen';
 import { TeleportScreen } from './screens/TeleportScreen';
 import { TouchScreen } from './screens/TouchScreen';
 import { ShapeScreen } from './screens/ShapeScreen';
+import { SheetScreen } from './screens/SheetScreen';
 import { TourScreen } from './screens/TourScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -58,6 +59,16 @@ export default function App() {
               name="Shape"
               component={ShapeScreen}
               options={{ title: 'Circle cutout' }}
+            />
+            <Stack.Screen
+              name="Sheet"
+              component={SheetScreen}
+              options={{
+                title: 'Sheet spotlight',
+                presentation: 'formSheet',
+                sheetGrabberVisible: true,
+                sheetAllowedDetents: ['medium', 'large'],
+              }}
             />
           </Stack.Navigator>
         </NavigationContainer>
