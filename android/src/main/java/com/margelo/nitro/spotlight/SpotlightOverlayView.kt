@@ -197,11 +197,15 @@ internal class SpotlightOverlayView(
     // know this overlay's current screen position.
     windowRectDp.set(nextWindowRectDp)
 
-    // Guard: if not laid out yet, onLayout will apply windowRectDp.
+    // Snapshot geometry even if this view isn't laid out yet — getLocationOnScreen
+    // / getWindowVisibleDisplayFrame reflect this view's screen position, not its
+    // size, so windowDpToLocalDip() (read immediately by callers via onTargetLayout)
+    // gets accurate values instead of zero-initialized defaults.
+    refreshGeometryCache()
+
+    // Guard: if not laid out yet, onLayout will apply windowRectDp once it is.
     if (width == 0 || height == 0) return
 
-    // Snapshot geometry once — avoids repeated system calls per animation frame.
-    refreshGeometryCache()
     targetLocalPx.set(windowDpToLocalPx(windowRectDp))
 
     if (!animated || durationMs <= 0L) {

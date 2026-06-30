@@ -56,10 +56,7 @@ export function useSpotlightTour({
       if (!step) return;
 
       setCurrentIndex(nextIndex);
-      highlightById(
-        step.id,
-        step.durationMs == null ? undefined : { durationMs: step.durationMs }
-      );
+      highlightById(step.id, step);
     },
     [resolveIndex, highlightById, steps]
   );

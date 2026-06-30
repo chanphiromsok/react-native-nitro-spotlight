@@ -109,6 +109,10 @@ public final class SpotlightView: UIView {
   public override func layoutSubviews() {
     super.layoutSubviews()
     updateLayerFrames()
+    // Skip while a highlight transition is animating — any layout pass
+    // (keyboard, safe-area change, parent resize) would otherwise cancel
+    // the in-flight CABasicAnimation and snap the mask to its final path.
+    guard !hasRunningPathAnimation else { return }
     redraw(animated: false)
   }
 
