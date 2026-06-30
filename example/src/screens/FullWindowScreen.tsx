@@ -1,9 +1,6 @@
 import { useRef, type ElementRef } from 'react';
 import { Text, View } from 'react-native';
-import {
-  Spotlight,
-  useSpotlight,
-} from 'react-native-nitro-spotlight';
+import { Spotlight, useSpotlight } from 'react-native-nitro-spotlight';
 import { TooltipCard } from '../components/TooltipCard';
 import { FullWindowOverlay } from 'react-native-screens';
 import { ScreenShell } from '../components/ScreenShell';

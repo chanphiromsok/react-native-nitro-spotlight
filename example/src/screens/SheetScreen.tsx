@@ -50,16 +50,12 @@ export function SheetScreen() {
           <View ref={featRef} style={styles.feature}>
             <Text style={styles.featureIcon}>📐</Text>
             <Text style={styles.featureTitle}>Target B</Text>
-            <Text style={styles.featureCopy}>
-              Left feature card.
-            </Text>
+            <Text style={styles.featureCopy}>Left feature card.</Text>
           </View>
           <View ref={actRef} style={styles.feature}>
             <Text style={styles.featureIcon}>🎯</Text>
             <Text style={styles.featureTitle}>Target C</Text>
-            <Text style={styles.featureCopy}>
-              Right feature card.
-            </Text>
+            <Text style={styles.featureCopy}>Right feature card.</Text>
           </View>
         </View>
       </View>
