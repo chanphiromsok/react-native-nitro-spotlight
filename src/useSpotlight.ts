@@ -98,7 +98,11 @@ export function useSpotlight(): SpotlightControls {
         width: number,
         height: number
       ) => {
-        instance.highlightAnimated(x, y, width, height, durationMs);
+        // Re-read the ref: <Spotlight> may have unmounted between highlight()
+        // and the measureInWindow callback firing.
+        const current = _ref.current;
+        if (!current) { finishAnimationGuard(); return; }
+        current.highlightAnimated(x, y, width, height, durationMs);
         animationTimerRef.current = setTimeout(
           finishAnimationGuard,
           durationMs
@@ -114,7 +118,13 @@ export function useSpotlight(): SpotlightControls {
               return;
             }
 
-            retryTarget.measureInWindow(animateToRect);
+            retryTarget.measureInWindow((rx, ry, rw, rh) => {
+              if (rw === 0 && rh === 0) {
+                finishAnimationGuard();
+                return;
+              }
+              animateToRect(rx, ry, rw, rh);
+            });
           });
           return;
         }

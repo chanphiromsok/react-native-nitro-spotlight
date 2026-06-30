@@ -83,5 +83,4 @@ ios/generated
 android/generated
 
 # React Native Nitro Modules
-nitrogen/
 trace_processor

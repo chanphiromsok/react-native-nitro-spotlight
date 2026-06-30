@@ -1,5 +1,9 @@
 import UIKit
 
+enum SpotlightShape: String {
+  case rect
+  case circle
+}
 
 public final class SpotlightView: UIView {
 
@@ -38,6 +42,13 @@ public final class SpotlightView: UIView {
       guard oldValue != borderColor else { return }
       resolvedBorderColor = UIColor.spotlightColor(from: borderColor)
       ringLayer.strokeColor = resolvedBorderColor.cgColor
+      redraw(animated: false)
+    }
+  }
+
+  var shape: SpotlightShape = .rect {
+    didSet {
+      guard oldValue != shape else { return }
       redraw(animated: false)
     }
   }
@@ -216,10 +227,20 @@ public final class SpotlightView: UIView {
     guard !sourceRect.isEmpty else { return nil }
     let local = localRect(from: sourceRect)
     let cutRect = local.insetBy(dx: -padding, dy: -padding)
-    return UIBezierPath(
-      roundedRect: cutRect,
-      cornerRadius: max(borderRadius + padding, 0)
-    )
+    switch shape {
+    case .circle:
+      // Use roundedRect with max corner radius instead of ovalIn so iOS
+      // CABasicAnimation can interpolate between rect and circle paths —
+      // both use the same element structure (moveTo + 4×lineTo+curveTo + close).
+      // ovalIn uses a different element count and snaps instead of morphing.
+      let radius = min(cutRect.width, cutRect.height) / 2
+      return UIBezierPath(roundedRect: cutRect, cornerRadius: radius)
+    case .rect:
+      return UIBezierPath(
+        roundedRect: cutRect,
+        cornerRadius: max(borderRadius + padding, 0)
+      )
+    }
   }
 
   private func makeOverlayPath(holePath: UIBezierPath?) -> UIBezierPath? {

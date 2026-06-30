@@ -18,6 +18,7 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
 
   func beforeUpdate() {
     spotlightView.dimOpacity = CGFloat(dimOpacity ?? Self.defaultDimOpacity)
+    spotlightView.shape = SpotlightShape(rawValue: shape ?? "rect") ?? .rect
     spotlightView.borderRadius = CGFloat(borderRadius ?? Self.defaultBorderRadius)
     spotlightView.borderColor = borderColor ?? Self.defaultBorderColor
     spotlightView.padding = CGFloat(padding ?? Self.defaultPadding)
@@ -27,7 +28,7 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
 
   func onDropView() {
     DispatchQueue.main.async { [weak self] in
-      self?.spotlightView.clear()
+      self?.spotlightView.clear(animated: false)
     }
   }
 
@@ -37,6 +38,13 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
     didSet {
       guard oldValue != dimOpacity else { return }
       spotlightView.dimOpacity = CGFloat(dimOpacity ?? Self.defaultDimOpacity)
+    }
+  }
+
+  var shape: String? {
+    didSet {
+      guard oldValue != shape else { return }
+      spotlightView.shape = SpotlightShape(rawValue: shape ?? "rect") ?? .rect
     }
   }
 
@@ -91,6 +99,7 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
     width: Double,
     height: Double
   ) throws {
+    guard width > 0, height > 0 else { return }
     DispatchQueue.main.async { [weak self] in
       guard let self else { return }
       spotlightView.setHighlight(CGRect(x: x, y: y, width: width, height: height), animated: false)
@@ -105,6 +114,7 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
     height: Double,
     durationMs: Double
   ) throws {
+    guard width > 0, height > 0 else { return }
     DispatchQueue.main.async { [weak self] in
       guard let self else { return }
       spotlightView.setHighlight(
@@ -123,6 +133,7 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
   }
 
   private static let defaultDimOpacity = 0.55
+  private static let defaultShape = "rect"
   private static let defaultBorderRadius = 12.0
   private static let defaultPadding = 6.0
   private static let defaultBorderWidth = 1.5

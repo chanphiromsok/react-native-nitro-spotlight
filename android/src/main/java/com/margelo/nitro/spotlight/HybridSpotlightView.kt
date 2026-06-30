@@ -45,6 +45,7 @@ class HybridSpotlightView(
   // -------------------------------------------------------------------------
 
   private var dimOpacityValue: Double? = null
+  private var shapeValue: String? = null
   private var borderRadiusValue: Double? = null
   private var paddingValue: Double? = null
   private var borderWidthValue: Double? = null
@@ -72,6 +73,14 @@ class HybridSpotlightView(
           headerDimView.setBackgroundColor(dimArgb(value ?: DEFAULT_DIM_OPACITY))
         }
       }
+    }
+
+  override var shape: String?
+    get() = shapeValue
+    set(value) {
+      if (shapeValue == value) return
+      shapeValue = value
+      UiThreadUtil.runOnUiThread { spotlightView.shape = value ?: DEFAULT_SHAPE }
     }
 
   override var borderRadius: Double?
@@ -185,6 +194,7 @@ class HybridSpotlightView(
     onTargetLayout = null
     onBackdropPress = null
     dimOpacityValue = null
+    shapeValue = null
     borderRadiusValue = null
     paddingValue = null
     borderWidthValue = null
@@ -192,6 +202,7 @@ class HybridSpotlightView(
     allowOverlayClickValue = null
     UiThreadUtil.runOnUiThread {
       spotlightView.dimOpacity = DEFAULT_DIM_OPACITY.toFloat()
+      spotlightView.shape = DEFAULT_SHAPE
       spotlightView.borderRadius = DEFAULT_BORDER_RADIUS.toFloat()
       spotlightView.padding = DEFAULT_PADDING.toFloat()
       spotlightView.borderWidth = DEFAULT_BORDER_WIDTH.toFloat()
@@ -239,14 +250,20 @@ class HybridSpotlightView(
 
   private fun showHeaderDim() {
     val dv = context.currentActivity?.window?.decorView as? ViewGroup ?: return
+
+    // Skip if the spotlight overlay lives in a different window than the
+    // activity (e.g. a BottomSheetDialogFragment or any modal dialog).
+    // The host dialog provides its own scrim; adding a dim strip to the
+    // activity's decor view would place it behind the dialog — invisible
+    // and incorrect. The dim + cutout inside the dialog window is enough.
+    if (spotlightView.windowToken != dv.windowToken) return
+
     decorView = dv
 
     // Measure how many pixels sit above the React-managed spotlightView
     // (status bar height + native navigation header height).
     val origin = IntArray(2)
-    val frame = Rect()
     spotlightView.getLocationOnScreen(origin)
-    spotlightView.getWindowVisibleDisplayFrame(frame)
 
     // origin[1] is the screen-y of spotlightView's top edge.
     // Everything from y=0 to y=origin[1] is above the React tree.
@@ -282,6 +299,7 @@ class HybridSpotlightView(
 
   companion object {
     private const val DEFAULT_DIM_OPACITY = 0.55
+    private const val DEFAULT_SHAPE = "rect"
     private const val DEFAULT_BORDER_RADIUS = 12.0
     private const val DEFAULT_PADDING = 6.0
     private const val DEFAULT_BORDER_WIDTH = 1.5

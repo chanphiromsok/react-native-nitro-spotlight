@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 import { callback } from 'react-native-nitro-modules';
 import type { Rect } from './Spotlight.nitro';
 import { SpotlightView, type SpotlightRef } from './SpotlightView';
 import type { SpotlightControls } from './useSpotlight';
+
+/** Shape of the cutout hole. */
+export type SpotlightShape = 'rect' | 'circle';
 
 export interface SpotlightComponentProps {
   /** Controls returned by useSpotlight(). Preferred for app code. */
@@ -15,7 +18,14 @@ export interface SpotlightComponentProps {
   /** Opacity of the dim overlay. Omitted values are not sent to native. */
   dimOpacity?: number;
 
-  /** Border radius of the cutout hole. Omitted values are not sent to native. */
+  /**
+   * Shape of the cutout hole.
+   * - 'rect' (default): rounded rectangle, respects borderRadius
+   * - 'circle': ellipse inscribed in the target rect, ignores borderRadius
+   */
+  shape?: SpotlightShape;
+
+  /** Border radius of the cutout hole. Ignored when shape is 'circle'. Omitted values are not sent to native. */
   borderRadius?: number;
 
   /** Padding around the target rect. Omitted values are not sent to native. */
@@ -41,7 +51,7 @@ export interface SpotlightComponentProps {
   onTargetLayout?: (rect: Rect) => void;
 
   /**
-   * Content rendered above the dim overlay (e.g. SpotlightTooltip).
+   * Content rendered above the dim overlay (e.g. a custom tooltip).
    * Children are siblings of SpotlightView in the React tree, so they
    * composite above the dim layer at higher z-order automatically.
    */
@@ -57,7 +67,7 @@ export interface SpotlightComponentProps {
  * Full-screen overlay that highlights a measured view with a native cutout.
  * Pair with useSpotlight() to drive it.
  *
- * Place children (e.g. SpotlightTooltip) inside to render them above the dim
+ * Place children (e.g. a custom tooltip) inside to render them above the dim
  * layer without any extra z-index or hole-punching. Works as a regular React
  * Native view — can be wrapped in any portal library (e.g. react-native-teleport)
  * to render from anywhere in the component tree.
@@ -70,9 +80,11 @@ export interface SpotlightComponentProps {
  *   <View style={{ flex: 1 }}>
  *     <YourContent />
  *     <Spotlight controls={spotlight} onBackdropPress={spotlight.clear}>
- *       <SpotlightTooltip controls={spotlight}>
- *         <Text>Here's a tip!</Text>
- *       </SpotlightTooltip>
+ *       {spotlight.targetRect && (
+ *         <MyTooltip targetRect={spotlight.targetRect}>
+ *           <Text>Here's a tip!</Text>
+ *         </MyTooltip>
+ *       )}
  *     </Spotlight>
  *   </View>
  * )
@@ -82,6 +94,7 @@ export function Spotlight({
   controls,
   spotlightRef,
   dimOpacity,
+  shape,
   borderRadius,
   padding,
   borderWidth,
@@ -92,21 +105,25 @@ export function Spotlight({
   children,
   style,
 }: SpotlightComponentProps) {
-  const [spotlightInstance, setSpotlightInstance] =
-    useState<SpotlightRef | null>(null);
-
   // Stable refs so callback() wrappers below never change identity on re-render.
   const onTargetLayoutRef = useRef(onTargetLayout);
   const onBackdropPressRef = useRef(onBackdropPress);
   const controlsRef = useRef(controls);
+  const spotlightRefRef = useRef(spotlightRef);
   useEffect(() => {
     onTargetLayoutRef.current = onTargetLayout;
     onBackdropPressRef.current = onBackdropPress;
     controlsRef.current = controls;
+    spotlightRefRef.current = spotlightRef;
   });
 
+  // Holds the SpotlightRef without triggering a re-render when it changes.
+  const spotlightInstanceRef = useRef<SpotlightRef | null>(null);
+
   const hybridRef = useCallback((ref: SpotlightRef | null) => {
-    setSpotlightInstance(ref);
+    spotlightInstanceRef.current = ref;
+    const targetRef = controlsRef.current?._ref ?? spotlightRefRef.current;
+    if (targetRef) targetRef.current = ref;
   }, []);
 
   const handleTargetLayout = useCallback((rect: Rect) => {
@@ -118,29 +135,35 @@ export function Spotlight({
     onBackdropPressRef.current?.();
   }, []);
 
+  // Re-wire the stored instance when the controls/spotlightRef prop changes.
   useEffect(() => {
     const targetRef = controls?._ref ?? spotlightRef;
     if (!targetRef) return;
-    if (spotlightInstance) {
-      targetRef.current = spotlightInstance;
-    }
+    targetRef.current = spotlightInstanceRef.current;
     return () => {
       targetRef.current = null;
     };
-  }, [controls, spotlightInstance, spotlightRef]);
+  }, [controls, spotlightRef]);
+
+  // Stable Nitro callback wrappers — created once since all three handlers have
+  // empty useCallback deps and never change identity.
+  const hybridRefCb = useMemo(() => callback(hybridRef), [hybridRef]);
+  const onBackdropPressCb = useMemo(() => callback(handleBackdropPress), [handleBackdropPress]);
+  const onTargetLayoutCb = useMemo(() => callback(handleTargetLayout), [handleTargetLayout]);
 
   return (
     <View style={[styles.overlay, style]} pointerEvents="box-none">
       <SpotlightView
-        hybridRef={callback(hybridRef)}
+        hybridRef={hybridRefCb}
         dimOpacity={dimOpacity}
+        shape={shape}
         borderRadius={borderRadius}
         padding={padding}
         borderWidth={borderWidth}
         borderColor={borderColor}
         allowOverlayClick={allowOverlayClick}
-        onBackdropPress={callback(handleBackdropPress)}
-        onTargetLayout={callback(handleTargetLayout)}
+        onBackdropPress={onBackdropPressCb}
+        onTargetLayout={onTargetLayoutCb}
         style={StyleSheet.absoluteFillObject}
       />
       {children}
@@ -156,6 +179,5 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     zIndex: 2147483647,
-    elevation: 10000,
   },
 });

@@ -23,6 +23,12 @@ const SCENARIOS: Array<{
     copy: 'Run next/back/stop with useSpotlightTour.',
   },
   {
+    name: 'CustomState',
+    title: 'Custom state',
+    icon: '🗃️',
+    copy: 'Drive a tour from useState, zustand, jotai, or any store.',
+  },
+  {
     name: 'Touch',
     title: 'Touch behavior',
     icon: '👆',
@@ -45,6 +51,18 @@ const SCENARIOS: Array<{
     title: 'Full window overlay',
     icon: '🪟',
     copy: 'Dim the nav bar too with FullWindowOverlay from react-native-screens.',
+  },
+  {
+    name: 'Shape',
+    title: 'Circle cutout',
+    icon: '⭕',
+    copy: 'Use shape="circle" for FABs, avatars and round icon buttons.',
+  },
+  {
+    name: 'Sheet',
+    title: 'Form / bottom sheet',
+    icon: '📋',
+    copy: 'Spotlight inside a form sheet (iOS) or bottom sheet (Android) dialog window.',
   },
 ];
 

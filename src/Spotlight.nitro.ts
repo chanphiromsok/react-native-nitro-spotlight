@@ -13,7 +13,9 @@ export interface Rect {
 
 export interface SpotlightProps extends HybridViewProps {
   dimOpacity?: number;
-  /** Border radius of the cutout hole. */
+  /** Shape of the cutout hole. 'rect' (default) or 'circle'. */
+  shape?: string;
+  /** Border radius of the cutout hole. Ignored when shape is 'circle'. */
   borderRadius?: number;
   padding?: number;
   /** Width of the border around the cutout. Set to 0 to remove it. */

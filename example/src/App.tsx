@@ -5,12 +5,15 @@ import { StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PortalHost, PortalProvider } from 'react-native-teleport';
 import type { RootStackParamList } from './navigation/types';
+import { CustomStateScreen } from './screens/CustomStateScreen';
 import { FullWindowScreen } from './screens/FullWindowScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { LifecycleScreen } from './screens/LifecycleScreen';
 import { ManualScreen } from './screens/ManualScreen';
 import { TeleportScreen } from './screens/TeleportScreen';
 import { TouchScreen } from './screens/TouchScreen';
+import { ShapeScreen } from './screens/ShapeScreen';
+import { SheetScreen } from './screens/SheetScreen';
 import { TourScreen } from './screens/TourScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -40,10 +43,33 @@ export default function App() {
               component={TourScreen}
               options={{ headerBackButtonMenuEnabled: false }}
             />
+            <Stack.Screen
+              name="CustomState"
+              component={CustomStateScreen}
+              options={{
+                title: 'Custom state',
+                headerBackButtonMenuEnabled: false,
+              }}
+            />
             <Stack.Screen name="Touch" component={TouchScreen} />
             <Stack.Screen name="Lifecycle" component={LifecycleScreen} />
             <Stack.Screen name="Teleport" component={TeleportScreen} />
             <Stack.Screen name="FullWindow" component={FullWindowScreen} />
+            <Stack.Screen
+              name="Shape"
+              component={ShapeScreen}
+              options={{ title: 'Circle cutout' }}
+            />
+            <Stack.Screen
+              name="Sheet"
+              component={SheetScreen}
+              options={{
+                title: 'Sheet spotlight',
+                presentation: 'formSheet',
+                sheetGrabberVisible: true,
+                sheetAllowedDetents: ['medium', 'large'],
+              }}
+            />
           </Stack.Navigator>
         </NavigationContainer>
         <PortalHost name="spotlight-root" style={styles.host} />

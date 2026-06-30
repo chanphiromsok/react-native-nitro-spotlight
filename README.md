@@ -230,6 +230,90 @@ How it works:
 
 If you do not need full-screen coverage or preloading, render `<Spotlight controls={spotlight} />` directly in the screen instead.
 
+## Building a tooltip
+
+`Spotlight` has no built-in tooltip component — bring your own. Read `controls.targetRect` to position it. Render it as a child of `<Spotlight>` so it naturally composites above the native dim layer.
+
+```tsx
+import { useRef, type ComponentRef } from 'react';
+import { Pressable, StyleSheet, useWindowDimensions, View, Text, Button } from 'react-native';
+import { Spotlight, useSpotlight, type Rect } from 'react-native-nitro-spotlight';
+
+// Minimal positioned tooltip — drop this into your own component
+function MyTooltip({ targetRect, onDismiss }: { targetRect: Rect; onDismiss: () => void }) {
+  const { width, height } = useWindowDimensions();
+  const gap = 12;
+  const margin = 16;
+  const maxWidth = width - margin * 2;
+  const left = Math.max(margin, Math.min(
+    targetRect.x + targetRect.width / 2 - maxWidth / 2,
+    width - maxWidth - margin
+  ));
+  const placeBelow = height - (targetRect.y + targetRect.height) >= targetRect.y;
+
+  return (
+    <View
+      style={[
+        styles.tooltip,
+        placeBelow
+          ? { top: targetRect.y + targetRect.height + gap, left, maxWidth }
+          : { bottom: height - targetRect.y + gap, left, maxWidth },
+      ]}
+      pointerEvents="box-none"
+    >
+      <Pressable style={styles.card}>
+        <Text style={styles.tip}>Here's a tip!</Text>
+        <Button title="Got it" onPress={onDismiss} />
+      </Pressable>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  tooltip: { position: 'absolute' },
+  card: { padding: 16, backgroundColor: '#1B2440', borderRadius: 12 },
+  tip: { color: '#fff', marginBottom: 8 },
+});
+
+// Usage
+function Example() {
+  const spotlight = useSpotlight();
+  const cardRef = useRef<ComponentRef<typeof View>>(null);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <View ref={cardRef}><Text>Target</Text></View>
+      <Button onPress={() => spotlight.highlight(cardRef)} title="Show" />
+
+      <Spotlight controls={spotlight} onBackdropPress={spotlight.clear}>
+        {spotlight.targetRect && (
+          <MyTooltip targetRect={spotlight.targetRect} onDismiss={spotlight.clear} />
+        )}
+      </Spotlight>
+    </View>
+  );
+}
+```
+
+**To add animation** — wrap in a Reanimated `Animated.View` with `entering`/`exiting`, or drive a `useRef(new Animated.Value(0))` from a `useEffect` that watches `targetRect`. Use a `key` derived from the rect coordinates to re-trigger `entering` on each tour step change:
+
+```tsx
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+
+// inside <Spotlight>:
+{spotlight.targetRect && (
+  <Animated.View
+    key={`${spotlight.targetRect.x}-${spotlight.targetRect.y}`}
+    entering={FadeIn.delay(180).duration(150)}
+    exiting={FadeOut.duration(100)}
+  >
+    <MyTooltip targetRect={spotlight.targetRect} onDismiss={spotlight.clear} />
+  </Animated.View>
+)}
+```
+
+The `delay(180)` lets the cutout animation travel most of the way before the tooltip appears. Tune it to match your `durationMs` on `highlight()`.
+
 ## Product tour mode 🧭
 
 Use `useSpotlightTour()` when you want a real walkthrough.
@@ -346,6 +430,126 @@ Close on backdrop tap:
 <Spotlight controls={spotlight} onBackdropPress={spotlight.clear} />
 ```
 
+## Bring your own state
+
+`useSpotlightTour` manages step state internally. If you want to drive a tour from **zustand, jotai, redux, context, or any other store**, use `useSpotlightTargets` instead. It handles only the id → native View mapping; all step state lives wherever you put it.
+
+```tsx
+import { useEffect } from 'react';
+import { View, Button, Text } from 'react-native';
+import { Spotlight, useSpotlight, useSpotlightTargets } from 'react-native-nitro-spotlight';
+```
+
+### With zustand
+
+```tsx
+import { create } from 'zustand';
+
+const STEPS = ['intro', 'feature', 'done'] as const;
+type StepId = typeof STEPS[number];
+
+const useTourStore = create<{
+  step: StepId | null;
+  setStep: (step: StepId | null) => void;
+}>((set) => ({
+  step: null,
+  setStep: (step) => set({ step }),
+}));
+
+export function TourScreen() {
+  const spotlight = useSpotlight();
+  const targets = useSpotlightTargets(spotlight);
+  const { step, setStep } = useTourStore();
+
+  useEffect(() => {
+    if (step) targets.highlightById(step, { durationMs: 350 });
+    else spotlight.clear();
+  }, [step]);
+
+  return (
+    <View style={{ flex: 1, padding: 24 }}>
+      <View {...targets.getTargetProps('intro')}>
+        <Text>Intro</Text>
+      </View>
+      <View {...targets.getTargetProps('feature')}>
+        <Text>Feature</Text>
+      </View>
+      <View {...targets.getTargetProps('done')}>
+        <Text>Done</Text>
+      </View>
+
+      <Button title="Start" onPress={() => setStep('intro')} />
+
+      {step && (
+        <View style={{ marginTop: 'auto', padding: 16 }}>
+          <Text>Step: {step}</Text>
+          <Button
+            title="Next"
+            onPress={() => {
+              const i = STEPS.indexOf(step);
+              setStep(i + 1 < STEPS.length ? STEPS[i + 1] : null);
+            }}
+          />
+        </View>
+      )}
+
+      <Spotlight
+        controls={spotlight}
+        dimOpacity={0.68}
+        borderRadius={20}
+        padding={8}
+        onBackdropPress={() => setStep(null)}
+      />
+    </View>
+  );
+}
+```
+
+### With jotai
+
+```tsx
+import { atom, useAtom } from 'jotai';
+
+const stepAtom = atom<string | null>(null);
+
+export function TourScreen() {
+  const spotlight = useSpotlight();
+  const targets = useSpotlightTargets(spotlight);
+  const [step, setStep] = useAtom(stepAtom);
+
+  useEffect(() => {
+    if (step) targets.highlightById(step, { durationMs: 350 });
+    else spotlight.clear();
+  }, [step]);
+
+  // ... same JSX as above
+}
+```
+
+### With React context
+
+```tsx
+const TourContext = createContext<{
+  step: string | null;
+  setStep: (s: string | null) => void;
+} | null>(null);
+
+export function TourScreen() {
+  const spotlight = useSpotlight();
+  const targets = useSpotlightTargets(spotlight);
+  const { step, setStep } = useContext(TourContext)!;
+
+  useEffect(() => {
+    if (step) targets.highlightById(step, { durationMs: 350 });
+    else spotlight.clear();
+  }, [step]);
+
+  // ... same JSX as above
+}
+```
+
+The rule: `useSpotlight()` owns the native layer. `useSpotlightTargets(spotlight)` owns the id→ref map. Your store owns step state. Spread `getTargetProps(id)` on each target view, call `highlightById(id)` when your state changes.
+
 ## API
 
 ### `useSpotlight()`
@@ -358,7 +562,7 @@ const spotlight = useSpotlight();
 | --- | --- | --- |
 | `highlight` | `(viewRef, options?) => void` | Measures a view ref and animates the cutout to it. |
 | `clear` | `() => void` | Hides the overlay. |
-| `targetRect` | `Rect \| null` | Current cutout rect in overlay-local coordinates. `null` when hidden. Used by `SpotlightTooltip` for positioning. |
+| `targetRect` | `Rect \| null` | Current cutout rect in overlay-local coordinates. `null` when hidden. Use this to position your own tooltip above the dim layer. |
 | `_ref` | `RefObject` | Internal native ref. Use `<Spotlight controls={spotlight} />` instead of touching this directly. |
 
 ### `highlight(viewRef, options?)`
@@ -415,47 +619,18 @@ type SpotlightTourStep = {
 };
 ```
 
-### `<SpotlightTooltip />`
-
-Renders styled tooltip content above the dim overlay. Place it as a child of `<Spotlight>` — it appears above the native dim layer automatically.
-
-Visible only when `controls.targetRect` is non-null (i.e. a highlight is active). Handle backdrop taps on `<Spotlight onBackdropPress={...}>`, not on the tooltip.
+### `useSpotlightTargets(spotlight)`
 
 ```tsx
-import { Spotlight, SpotlightTooltip, useSpotlight } from 'react-native-nitro-spotlight';
-
-function Example() {
-  const spotlight = useSpotlight();
-  const cardRef = useRef<ComponentRef<typeof View>>(null);
-
-  return (
-    <View style={{ flex: 1 }}>
-      <View ref={cardRef}>
-        <Text>Target</Text>
-      </View>
-
-      <Button onPress={() => spotlight.highlight(cardRef)} title="Show" />
-
-      <Spotlight controls={spotlight} onBackdropPress={spotlight.clear}>
-        <SpotlightTooltip controls={spotlight}>
-          <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
-            <Text>Here's a tip!</Text>
-            <Button title="Got it" onPress={spotlight.clear} />
-          </View>
-        </SpotlightTooltip>
-      </Spotlight>
-    </View>
-  );
-}
+const targets = useSpotlightTargets(spotlight);
 ```
 
-| Prop | Type | Default | What it does |
-| --- | --- | --- | --- |
-| `controls` | `SpotlightControls` | required | Controls from `useSpotlight()` or `tour.spotlight`. |
-| `children` | `ReactNode` | required | Tooltip content — fully unstyled, bring your own design. |
-| `placement` | `'above' \| 'below' \| 'auto'` | `'auto'` | Where to place the tooltip relative to the cutout. `'auto'` picks whichever side has more space. |
-| `gap` | `number` | `12` | Gap in pixels between the cutout edge and the tooltip. |
-| `style` | `ViewStyle` | — | Style applied to the tooltip container. Use for background, border radius, shadow, etc. |
+The ref-registration half of `useSpotlightTour`, without any step state. Use this when you want to drive a tour from your own state management (zustand, jotai, redux, context, etc.).
+
+| Field | Type | What it does |
+| --- | --- | --- |
+| `getTargetProps` | `(id: string) => { ref, collapsable: false }` | Spread on the target view for that step. |
+| `highlightById` | `(id: string, options?) => void` | Highlight the registered view for a given id. No-op if the id is not yet registered. |
 
 ### `SpotlightView`
 
@@ -562,10 +737,7 @@ The skill teaches agents:
 - how `allowOverlayClick` and `onBackdropPress` behave
 - how to avoid duplicate animation hitches
 
-Included skills:
-
-- `react-native-nitro-spotlight` — for app developers using the library
-- `react-native-nitro-spotlight-maintainer` — for contributors working on this repo
+Contributors working on this repo get the maintainer skill automatically — it lives in `.claude/skills/` and loads when you open the repo in Claude Code. No install step needed.
 
 After the repo is public and installable, it can be discovered through the skills ecosystem / skills.sh.
 
