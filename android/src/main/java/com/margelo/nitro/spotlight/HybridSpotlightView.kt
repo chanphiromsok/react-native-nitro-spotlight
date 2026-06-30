@@ -250,14 +250,20 @@ class HybridSpotlightView(
 
   private fun showHeaderDim() {
     val dv = context.currentActivity?.window?.decorView as? ViewGroup ?: return
+
+    // Skip if the spotlight overlay lives in a different window than the
+    // activity (e.g. a BottomSheetDialogFragment or any modal dialog).
+    // The host dialog provides its own scrim; adding a dim strip to the
+    // activity's decor view would place it behind the dialog — invisible
+    // and incorrect. The dim + cutout inside the dialog window is enough.
+    if (spotlightView.windowToken != dv.windowToken) return
+
     decorView = dv
 
     // Measure how many pixels sit above the React-managed spotlightView
     // (status bar height + native navigation header height).
     val origin = IntArray(2)
-    val frame = Rect()
     spotlightView.getLocationOnScreen(origin)
-    spotlightView.getWindowVisibleDisplayFrame(frame)
 
     // origin[1] is the screen-y of spotlightView's top edge.
     // Everything from y=0 to y=origin[1] is above the React tree.
