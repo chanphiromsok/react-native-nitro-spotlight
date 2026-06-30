@@ -577,6 +577,107 @@ function Example() {
 | `gap` | `number` | `12` | Gap in pixels between the cutout edge and the tooltip. |
 | `style` | `ViewStyle` | — | Style applied to the tooltip container. Use for background, border radius, shadow, etc. |
 
+### Animating the tooltip
+
+`SpotlightTooltip` positions itself but does not animate — it has no opinion on fade, spring, or slide. Add your own animation by wrapping it. Two common patterns:
+
+#### With Reanimated
+
+Use `entering`/`exiting` presets on an `Animated.View` wrapper. Gate on `targetRect` so the wrapper mounts and unmounts with the highlight. Use a `key` derived from the rect to force a remount — and therefore re-trigger `entering` — on each tour step transition.
+
+```tsx
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { Spotlight, SpotlightTooltip, useSpotlight } from 'react-native-nitro-spotlight';
+
+function Example() {
+  const spotlight = useSpotlight();
+  const cardRef = useRef<ComponentRef<typeof View>>(null);
+
+  // Key changes on every new rect — remounts the Animated.View so FadeIn
+  // retriggles on each tour step instead of only on the first highlight.
+  const rectKey = spotlight.targetRect
+    ? `${spotlight.targetRect.x}-${spotlight.targetRect.y}`
+    : 'hidden';
+
+  return (
+    <View style={{ flex: 1 }}>
+      <View ref={cardRef}><Text>Target</Text></View>
+      <Button onPress={() => spotlight.highlight(cardRef)} title="Show" />
+
+      <Spotlight controls={spotlight} onBackdropPress={spotlight.clear}>
+        {spotlight.targetRect && (
+          <Animated.View
+            key={rectKey}
+            entering={FadeIn.delay(180).duration(150)}
+            exiting={FadeOut.duration(100)}
+          >
+            <SpotlightTooltip controls={spotlight}>
+              <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
+                <Text>Here's a tip!</Text>
+                <Button title="Got it" onPress={spotlight.clear} />
+              </View>
+            </SpotlightTooltip>
+          </Animated.View>
+        )}
+      </Spotlight>
+    </View>
+  );
+}
+```
+
+The `delay(180)` lets the 300 ms cutout animation travel most of the way before the tooltip appears. Tune it to match your `durationMs` on `highlight()`.
+
+#### With React Native's `Animated`
+
+No extra library needed — track `targetRect` in a `useEffect` and drive an opacity value manually.
+
+```tsx
+import { useEffect, useRef } from 'react';
+import { Animated, View, Text, Button } from 'react-native';
+import { Spotlight, SpotlightTooltip, useSpotlight } from 'react-native-nitro-spotlight';
+
+function Example() {
+  const spotlight = useSpotlight();
+  const cardRef = useRef<ComponentRef<typeof View>>(null);
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!spotlight.targetRect) {
+      // Clear: fade out immediately
+      Animated.timing(opacity, { toValue: 0, duration: 100, useNativeDriver: true }).start();
+      return;
+    }
+    // Appear: wait for the cutout to travel, then fade in
+    const timer = setTimeout(() => {
+      Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [spotlight.targetRect, opacity]);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <View ref={cardRef}><Text>Target</Text></View>
+      <Button onPress={() => spotlight.highlight(cardRef)} title="Show" />
+
+      <Spotlight controls={spotlight} onBackdropPress={spotlight.clear}>
+        <Animated.View style={{ opacity }}>
+          <SpotlightTooltip controls={spotlight}>
+            <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}>
+              <Text>Here's a tip!</Text>
+              <Button title="Got it" onPress={spotlight.clear} />
+            </View>
+          </SpotlightTooltip>
+        </Animated.View>
+      </Spotlight>
+    </View>
+  );
+}
+```
+
+> **Tip:** `SpotlightTooltip` returns `null` when `targetRect` is null, so the `Animated.View` collapses. On the fade-out path, the tooltip disappears before opacity reaches zero. If you need the fade-out to play fully, hold the previous rect yourself and clear only after the animation finishes.
+
+---
+
 ### `useSpotlightTargets(spotlight)`
 
 ```tsx
