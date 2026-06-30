@@ -1,9 +1,9 @@
-import { type ReactNode, useCallback, useMemo } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Pressable,
   StyleSheet,
   useWindowDimensions,
-  View,
   type ViewStyle,
 } from 'react-native';
 import type { Rect } from './Spotlight.nitro';
@@ -29,6 +29,18 @@ export interface SpotlightTooltipProps {
 
   /** Style applied to the tooltip container. Use for background, border radius, shadow, etc. */
   style?: ViewStyle;
+
+  /**
+   * How long to wait (ms) after a highlight starts before fading the tooltip in.
+   * Lets the cutout animation travel most of the way before the tooltip appears.
+   * Default: 180 (matches 60 % of the default 300 ms spotlight animation).
+   */
+  showDelay?: number;
+
+  /**
+   * Duration (ms) of the tooltip fade-in / fade-out animation. Default: 120.
+   */
+  fadeDuration?: number;
 }
 
 /**
@@ -41,6 +53,9 @@ export interface SpotlightTooltipProps {
  * Backdrop press is handled by <Spotlight onBackdropPress={...}>.
  *
  * Visible only when controls.targetRect is non-null (i.e. a highlight is active).
+ * Fades in after showDelay ms so it appears once the cutout animation has mostly
+ * settled. On tour step transitions it fades out, waits for the cutout to travel,
+ * then fades in at the new position.
  *
  * @example
  * ```tsx
@@ -65,25 +80,100 @@ export function SpotlightTooltip({
   placement = 'auto',
   gap = 12,
   style,
+  showDelay = 180,
+  fadeDuration = 120,
 }: SpotlightTooltipProps) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { targetRect } = controls;
 
+  // displayRect is what the tooltip is currently positioned at.
+  // It lags behind targetRect intentionally so we can animate between states.
+  const [displayRect, setDisplayRect] = useState<Rect | null>(null);
+  const displayRectRef = useRef<Rect | null>(null);
+  const opacity = useRef(new Animated.Value(0)).current;
+  const delayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Use refs so the effect closure always reads current prop values without
+  // needing them as deps (which would re-trigger transition logic on prop change).
+  const showDelayRef = useRef(showDelay);
+  const fadeDurationRef = useRef(fadeDuration);
+  showDelayRef.current = showDelay;
+  fadeDurationRef.current = fadeDuration;
+
+  useEffect(() => {
+    const clearDelay = () => {
+      if (delayTimerRef.current) {
+        clearTimeout(delayTimerRef.current);
+        delayTimerRef.current = null;
+      }
+    };
+
+    const updateDisplay = (rect: Rect | null) => {
+      displayRectRef.current = rect;
+      setDisplayRect(rect);
+    };
+
+    const fadeIn = (rect: Rect) => {
+      updateDisplay(rect);
+      opacity.setValue(0);
+      delayTimerRef.current = setTimeout(() => {
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: fadeDurationRef.current,
+          useNativeDriver: true,
+        }).start();
+      }, showDelayRef.current);
+    };
+
+    if (!targetRect) {
+      // Clear: fade out then unmount
+      clearDelay();
+      opacity.stopAnimation();
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: fadeDurationRef.current,
+        useNativeDriver: true,
+      }).start(({ finished }: { finished: boolean }) => {
+        if (finished) updateDisplay(null);
+      });
+    } else if (displayRectRef.current !== null) {
+      // Step transition: quick fade out → reposition → fade in
+      clearDelay();
+      opacity.stopAnimation();
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: fadeDurationRef.current * 0.4,
+        useNativeDriver: true,
+      }).start(({ finished }: { finished: boolean }) => {
+        if (finished) fadeIn(targetRect);
+      });
+    } else {
+      // First appearance
+      clearDelay();
+      fadeIn(targetRect);
+    }
+
+    return clearDelay;
+  }, [targetRect, opacity]);
+
   const tooltipStyle = useMemo(() => {
-    if (!targetRect) return null;
-    const resolved = resolvePlacement(placement, targetRect, screenHeight, gap);
-    return computeTooltipStyle(resolved, targetRect, screenWidth, screenHeight, gap);
-  }, [targetRect, placement, gap, screenWidth, screenHeight]);
+    if (!displayRect) return null;
+    const resolved = resolvePlacement(placement, displayRect, screenHeight, gap);
+    return computeTooltipStyle(resolved, displayRect, screenWidth, screenHeight, gap);
+  }, [displayRect, placement, gap, screenWidth, screenHeight]);
 
   const noop = useCallback(() => {}, []);
 
-  if (!targetRect || !tooltipStyle) return null;
+  if (!displayRect || !tooltipStyle) return null;
 
   return (
-    <View style={[styles.tooltip, tooltipStyle, style]} pointerEvents="box-none">
+    <Animated.View
+      style={[styles.tooltip, tooltipStyle, style, { opacity }]}
+      pointerEvents="box-none"
+    >
       {/* Pressable consumes the touch so it doesn't reach SpotlightView's backdrop handler. */}
       <Pressable onPress={noop}>{children}</Pressable>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -125,5 +215,8 @@ function computeTooltipStyle(
 const styles = StyleSheet.create({
   tooltip: {
     position: 'absolute',
+    // backfaceVisibility avoids a GPU compositing layer flush on some Android drivers
+    // when opacity animates; useNativeDriver handles the rest.
+    backfaceVisibility: 'hidden',
   },
 });
