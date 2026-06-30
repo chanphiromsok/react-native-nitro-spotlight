@@ -57,11 +57,11 @@ export function CustomStateScreen() {
   const start = () => setStepId(STEPS[0].id);
   const next = () => {
     const nextIndex = currentIndex + 1;
-    setStepId(nextIndex < STEPS.length ? STEPS[nextIndex].id : null);
+    setStepId(STEPS[nextIndex]?.id ?? null);
   };
   const previous = () => {
     const prevIndex = currentIndex - 1;
-    if (prevIndex >= 0) setStepId(STEPS[prevIndex].id);
+    if (prevIndex >= 0) setStepId(STEPS[prevIndex]?.id ?? null);
   };
   const stop = () => setStepId(null);
 
