@@ -1,4 +1,3 @@
-import { useRef, type ElementRef } from 'react';
 import { Text, View } from 'react-native';
 import {
   Spotlight,
@@ -31,10 +30,6 @@ const CIRCLE_STEPS = [
 export function ShapeScreen() {
   const tour = useSpotlightTour({ steps: [...CIRCLE_STEPS] });
 
-  const avatarRef = useRef<ElementRef<typeof View>>(null);
-  const bellRef = useRef<ElementRef<typeof View>>(null);
-  const fabRef = useRef<ElementRef<typeof View>>(null);
-
   return (
     <ScreenShell
       title="Circle cutout"
@@ -44,7 +39,6 @@ export function ShapeScreen() {
       <View style={circleStyles.toolbar}>
         <View
           {...tour.getTargetProps('avatar')}
-          ref={avatarRef}
           style={circleStyles.avatar}
         >
           <Text style={circleStyles.avatarText}>JD</Text>
@@ -54,7 +48,6 @@ export function ShapeScreen() {
 
         <View
           {...tour.getTargetProps('bell')}
-          ref={bellRef}
           style={circleStyles.iconButton}
         >
           <Text style={circleStyles.iconText}>🔔</Text>
@@ -69,7 +62,6 @@ export function ShapeScreen() {
 
       <View
         {...tour.getTargetProps('fab')}
-        ref={fabRef}
         style={circleStyles.fab}
       >
         <Text style={circleStyles.fabText}>✏️</Text>

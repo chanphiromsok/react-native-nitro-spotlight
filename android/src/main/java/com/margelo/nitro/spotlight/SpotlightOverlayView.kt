@@ -379,10 +379,23 @@ internal class SpotlightOverlayView(
   private fun windowDpToLocalPx(windowDp: RectF): RectF = traceSection(TRACE_WINDOW_TO_LOCAL) {
     if (windowDp.isEmpty) return@traceSection RectF()
 
+    // RN measureInWindow returns DIP relative to the React root view.
+    // For the main activity, the React root sits at visibleFrame.top (status-bar
+    // height) in screen pixels, so adding visibleFrame.top converts to screen px.
+    // For dialog windows (BottomSheet / formSheet), the React root is the sheet's
+    // content view, which lives at cachedOverlayOrigin[1] on screen — the overlay
+    // fills that view from (0,0), so it matches. We detect the dialog case by
+    // checking whether the overlay starts below the visible-frame top.
+    val refY = if (cachedOverlayOrigin[1] <= cachedVisibleFrame.top) {
+      cachedVisibleFrame.top.toFloat()
+    } else {
+      cachedOverlayOrigin[1].toFloat()
+    }
+
     val screenLeft = windowDp.left * cachedDensity + cachedVisibleFrame.left
-    val screenTop = windowDp.top * cachedDensity + cachedVisibleFrame.top
+    val screenTop = windowDp.top * cachedDensity + refY
     val screenRight = windowDp.right * cachedDensity + cachedVisibleFrame.left
-    val screenBottom = windowDp.bottom * cachedDensity + cachedVisibleFrame.top
+    val screenBottom = windowDp.bottom * cachedDensity + refY
 
     RectF(
       screenLeft - cachedOverlayOrigin[0],

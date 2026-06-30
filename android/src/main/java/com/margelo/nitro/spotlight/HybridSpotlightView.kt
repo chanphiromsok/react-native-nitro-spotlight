@@ -277,6 +277,14 @@ class HybridSpotlightView(
 
     if (headerDimAdded) return
 
+    // hideHeaderDim() sets headerDimAdded = false then asynchronously posts
+    // removeView. If showHeaderDim fires again before that post runs, the view is
+    // still attached — addView would throw "already has a parent". Re-adopt it.
+    if (headerDimView.parent === dv) {
+      headerDimAdded = true
+      return
+    }
+
     dv.addView(
       headerDimView,
       FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, coveredHeight),
