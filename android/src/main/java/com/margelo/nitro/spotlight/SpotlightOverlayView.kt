@@ -15,6 +15,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
+import com.facebook.react.uimanager.ThemedReactContext
 
 internal class SpotlightOverlayView(
   context: Context,
@@ -93,7 +94,7 @@ internal class SpotlightOverlayView(
   private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
     color = parseBorderColor(borderColor)
     style = Paint.Style.STROKE
-    strokeWidth = borderWidth.coerceAtLeast(0f) * cachedDensity
+    strokeWidth = borderWidth.coerceAtLeast(0f) * resources.displayMetrics.density
   }
 
   // -------------------------------------------------------------------------
@@ -145,6 +146,13 @@ internal class SpotlightOverlayView(
   private var cachedDensity: Float = resources.displayMetrics.density
   private var cachedScreenW: Float = resources.displayMetrics.widthPixels.toFloat()
   private var cachedScreenH: Float = resources.displayMetrics.heightPixels.toFloat()
+
+  // True when this overlay lives in a dialog/sheet window (different window
+  // token from the host activity). Refreshed once per highlight in
+  // refreshGeometryCache(). Used to select the correct coordinate origin in
+  // windowDpToLocalPx(): dialog React roots are at cachedOverlayOrigin[1],
+  // not at cachedVisibleFrame.top.
+  private var cachedIsDialogWindow = false
 
   // -------------------------------------------------------------------------
   // Init
@@ -379,10 +387,21 @@ internal class SpotlightOverlayView(
   private fun windowDpToLocalPx(windowDp: RectF): RectF = traceSection(TRACE_WINDOW_TO_LOCAL) {
     if (windowDp.isEmpty) return@traceSection RectF()
 
+    // RN measureInWindow returns DIP relative to the React root view's screen
+    // position. In the main activity the React root is at visibleFrame.top
+    // (status-bar height), so refY = visibleFrame.top recovers screen pixels.
+    // In a dialog/sheet window the React root coincides with the overlay itself
+    // (absoluteFillObject inside the sheet content), so refY = overlayOrigin[1].
+    val refY = if (cachedIsDialogWindow) {
+      cachedOverlayOrigin[1].toFloat()
+    } else {
+      cachedVisibleFrame.top.toFloat()
+    }
+
     val screenLeft = windowDp.left * cachedDensity + cachedVisibleFrame.left
-    val screenTop = windowDp.top * cachedDensity + cachedVisibleFrame.top
+    val screenTop = windowDp.top * cachedDensity + refY
     val screenRight = windowDp.right * cachedDensity + cachedVisibleFrame.left
-    val screenBottom = windowDp.bottom * cachedDensity + cachedVisibleFrame.top
+    val screenBottom = windowDp.bottom * cachedDensity + refY
 
     RectF(
       screenLeft - cachedOverlayOrigin[0],
@@ -400,6 +419,19 @@ internal class SpotlightOverlayView(
   private fun refreshGeometryCache() {
     getLocationOnScreen(cachedOverlayOrigin)
     getWindowVisibleDisplayFrame(cachedVisibleFrame)
+
+    // Detect dialog windows (BottomSheet, formSheet) by comparing our window
+    // token to the host activity's decor window token. In a dialog the React
+    // root sits at cachedOverlayOrigin[1] on screen; in the main activity it
+    // sits at cachedVisibleFrame.top (status-bar height). The two cases need
+    // different reference Y values in windowDpToLocalPx().
+    cachedIsDialogWindow = run {
+      val actToken = (context as? ThemedReactContext)
+        ?.currentActivity?.window?.decorView?.windowToken
+        ?: return@run false
+      val myToken = windowToken ?: return@run false
+      myToken != actToken
+    }
 
     // Pre-build the outer EVEN_ODD rect in local coordinates. This rect
     // covers the full physical screen and doesn't change during an animation,
