@@ -28,7 +28,7 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
 
   func onDropView() {
     DispatchQueue.main.async { [weak self] in
-      self?.spotlightView.clear()
+      self?.spotlightView.clear(animated: false)
     }
   }
 
@@ -99,6 +99,7 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
     width: Double,
     height: Double
   ) throws {
+    guard width > 0, height > 0 else { return }
     DispatchQueue.main.async { [weak self] in
       guard let self else { return }
       spotlightView.setHighlight(CGRect(x: x, y: y, width: width, height: height), animated: false)
@@ -113,6 +114,7 @@ class HybridSpotlightView: HybridSpotlightViewSpec {
     height: Double,
     durationMs: Double
   ) throws {
+    guard width > 0, height > 0 else { return }
     DispatchQueue.main.async { [weak self] in
       guard let self else { return }
       spotlightView.setHighlight(

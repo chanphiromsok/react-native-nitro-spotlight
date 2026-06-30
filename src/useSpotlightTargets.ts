@@ -53,7 +53,11 @@ export function useSpotlightTargets(
   const getTargetProps = useCallback((id: string): SpotlightTargetProps => ({
     collapsable: false,
     ref: (target) => {
-      targetsRef.current.set(id, target);
+      if (target) {
+        targetsRef.current.set(id, target);
+      } else {
+        targetsRef.current.delete(id);
+      }
     },
   }), []);
 

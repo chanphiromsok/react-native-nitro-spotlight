@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 import { callback } from 'react-native-nitro-modules';
 import type { Rect } from './Spotlight.nitro';
@@ -145,10 +145,16 @@ export function Spotlight({
     };
   }, [controls, spotlightRef]);
 
+  // Stable Nitro callback wrappers — created once since all three handlers have
+  // empty useCallback deps and never change identity.
+  const hybridRefCb = useMemo(() => callback(hybridRef), [hybridRef]);
+  const onBackdropPressCb = useMemo(() => callback(handleBackdropPress), [handleBackdropPress]);
+  const onTargetLayoutCb = useMemo(() => callback(handleTargetLayout), [handleTargetLayout]);
+
   return (
     <View style={[styles.overlay, style]} pointerEvents="box-none">
       <SpotlightView
-        hybridRef={callback(hybridRef)}
+        hybridRef={hybridRefCb}
         dimOpacity={dimOpacity}
         shape={shape}
         borderRadius={borderRadius}
@@ -156,8 +162,8 @@ export function Spotlight({
         borderWidth={borderWidth}
         borderColor={borderColor}
         allowOverlayClick={allowOverlayClick}
-        onBackdropPress={callback(handleBackdropPress)}
-        onTargetLayout={callback(handleTargetLayout)}
+        onBackdropPress={onBackdropPressCb}
+        onTargetLayout={onTargetLayoutCb}
         style={StyleSheet.absoluteFillObject}
       />
       {children}
