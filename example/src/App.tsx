@@ -67,7 +67,7 @@ export default function App() {
                 title: 'Sheet spotlight',
                 presentation: 'formSheet',
                 sheetGrabberVisible: true,
-                sheetAllowedDetents: ['medium', 'large'],
+                sheetAllowedDetents: [0.5, 0.9],
               }}
             />
           </Stack.Navigator>
