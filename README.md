@@ -654,11 +654,11 @@ import { SpotlightView } from 'react-native-nitro-spotlight';
   <tr>
     <td align="center">
       <strong>iOS</strong><br />
-      <video src="docs/assets/ios.mov" controls width="280"></video>
+      <img src="docs/assets/ios.gif" width="280" />
     </td>
     <td align="center">
       <strong>Android</strong><br />
-      <video src="docs/assets/android.mov" controls width="280"></video>
+      <img src="docs/assets/android.gif" width="280" />
     </td>
   </tr>
 </table>
