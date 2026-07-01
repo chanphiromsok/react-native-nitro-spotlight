@@ -1,8 +1,5 @@
 import { Text, View } from 'react-native';
-import {
-  Spotlight,
-  useSpotlightTour,
-} from 'react-native-nitro-spotlight';
+import { Spotlight, useSpotlightTour } from 'react-native-nitro-spotlight';
 import { TooltipCard } from '../components/TooltipCard';
 import { ScreenShell } from '../components/ScreenShell';
 import { SpotlightButton } from '../components/SpotlightButton';
@@ -12,8 +9,7 @@ const CIRCLE_STEPS = [
   {
     id: 'avatar',
     title: 'Your profile',
-    description:
-      'Tap to edit your photo, display name and bio.',
+    description: 'Tap to edit your photo, display name and bio.',
   },
   {
     id: 'bell',
@@ -37,19 +33,13 @@ export function ShapeScreen() {
     >
       {/* Simulated app UI with circular elements */}
       <View style={circleStyles.toolbar}>
-        <View
-          {...tour.getTargetProps('avatar')}
-          style={circleStyles.avatar}
-        >
+        <View {...tour.getTargetProps('avatar')} style={circleStyles.avatar}>
           <Text style={circleStyles.avatarText}>JD</Text>
         </View>
 
         <Text style={circleStyles.toolbarTitle}>My Feed</Text>
 
-        <View
-          {...tour.getTargetProps('bell')}
-          style={circleStyles.iconButton}
-        >
+        <View {...tour.getTargetProps('bell')} style={circleStyles.iconButton}>
           <Text style={circleStyles.iconText}>🔔</Text>
         </View>
       </View>
@@ -60,15 +50,15 @@ export function ShapeScreen() {
         <View style={[circleStyles.feedCard, circleStyles.feedCardShort]} />
       </View>
 
-      <View
-        {...tour.getTargetProps('fab')}
-        style={circleStyles.fab}
-      >
+      <View {...tour.getTargetProps('fab')} style={circleStyles.fab}>
         <Text style={circleStyles.fabText}>✏️</Text>
       </View>
 
       <View style={styles.actions}>
-        <SpotlightButton label="Start circle tour" onPress={() => tour.start()} />
+        <SpotlightButton
+          label="Start circle tour"
+          onPress={() => tour.start()}
+        />
       </View>
 
       <Spotlight

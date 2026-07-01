@@ -47,19 +47,24 @@ export interface SpotlightTargets {
 export function useSpotlightTargets(
   spotlight: SpotlightControls
 ): SpotlightTargets {
-  const targetsRef = useRef<Map<string, ComponentRef<typeof View> | null>>(null!);
+  const targetsRef = useRef<Map<string, ComponentRef<typeof View> | null>>(
+    null!
+  );
   if (!targetsRef.current) targetsRef.current = new Map();
 
-  const getTargetProps = useCallback((id: string): SpotlightTargetProps => ({
-    collapsable: false,
-    ref: (target) => {
-      if (target) {
-        targetsRef.current.set(id, target);
-      } else {
-        targetsRef.current.delete(id);
-      }
-    },
-  }), []);
+  const getTargetProps = useCallback(
+    (id: string): SpotlightTargetProps => ({
+      collapsable: false,
+      ref: (target) => {
+        if (target) {
+          targetsRef.current.set(id, target);
+        } else {
+          targetsRef.current.delete(id);
+        }
+      },
+    }),
+    []
+  );
 
   const highlightById = useCallback(
     (id: string, options?: HighlightOptions) => {

@@ -1,10 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigation, usePreventRemove } from '@react-navigation/native';
 import { Text, View } from 'react-native';
-import {
-  Spotlight,
-  useSpotlightTour,
-} from 'react-native-nitro-spotlight';
+import { Spotlight, useSpotlightTour } from 'react-native-nitro-spotlight';
 import { TooltipCard } from '../components/TooltipCard';
 import { ScreenShell } from '../components/ScreenShell';
 import { SpotlightButton } from '../components/SpotlightButton';

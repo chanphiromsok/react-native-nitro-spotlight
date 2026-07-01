@@ -101,7 +101,10 @@ export function useSpotlight(): SpotlightControls {
         // Re-read the ref: <Spotlight> may have unmounted between highlight()
         // and the measureInWindow callback firing.
         const current = _ref.current;
-        if (!current) { finishAnimationGuard(); return; }
+        if (!current) {
+          finishAnimationGuard();
+          return;
+        }
         current.highlightAnimated(x, y, width, height, durationMs);
         animationTimerRef.current = setTimeout(
           finishAnimationGuard,

@@ -1,9 +1,6 @@
 import { useRef, useState, type ElementRef } from 'react';
 import { Text, View } from 'react-native';
-import {
-  Spotlight,
-  useSpotlight,
-} from 'react-native-nitro-spotlight';
+import { Spotlight, useSpotlight } from 'react-native-nitro-spotlight';
 import { TooltipCard } from '../components/TooltipCard';
 import { DemoTargets } from '../components/DemoTargets';
 import { ScreenShell } from '../components/ScreenShell';

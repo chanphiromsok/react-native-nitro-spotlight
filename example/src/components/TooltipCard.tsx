@@ -41,7 +41,10 @@ export function TooltipCard({ targetRect, children, style }: TooltipCardProps) {
     : { bottom: screenHeight - targetRect.y + GAP, left, maxWidth };
 
   return (
-    <View style={[styles.container, positionStyle, style]} pointerEvents="box-none">
+    <View
+      style={[styles.container, positionStyle, style]}
+      pointerEvents="box-none"
+    >
       <Pressable>{children}</Pressable>
     </View>
   );

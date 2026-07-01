@@ -38,7 +38,20 @@ class HybridSpotlightView(
    */
   private val headerDimView = View(context)
   private var headerDimAdded = false
+  private var headerDimRetryPosted = false
   private var decorView: ViewGroup? = null
+
+  init {
+    // Clean up headerDimView when the spotlight overlay detaches from its
+    // window (unmount without recycle). prepareForRecycle() handles the pool
+    // case; this listener covers destruction / direct unmount.
+    spotlightView.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+      override fun onViewAttachedToWindow(v: View) {}
+      override fun onViewDetachedFromWindow(v: View) {
+        hideHeaderDim()
+      }
+    })
+  }
 
   // -------------------------------------------------------------------------
   // Property backing fields
@@ -130,8 +143,7 @@ class HybridSpotlightView(
       field = value
       UiThreadUtil.runOnUiThread {
         spotlightView.onBackdropPress = value
-        // Keep header dim click handler in sync.
-        headerDimView.setOnClickListener(if (value != null) View.OnClickListener { value() } else null)
+        syncHeaderDimClickHandler()
       }
     }
 
@@ -268,28 +280,55 @@ class HybridSpotlightView(
     // origin[1] is the screen-y of spotlightView's top edge.
     // Everything from y=0 to y=origin[1] is above the React tree.
     val coveredHeight = origin[1]
-    if (coveredHeight <= 0) return
+    if (coveredHeight <= 0) {
+      // spotlightView hasn't been laid out yet (e.g. highlight() called on
+      // first mount before the first layout pass) — getLocationOnScreen
+      // returns [0,0]. Retry once after the next layout/message-queue pass
+      // instead of leaving the header permanently un-dimmed.
+      if (!headerDimRetryPosted) {
+        headerDimRetryPosted = true
+        spotlightView.post {
+          headerDimRetryPosted = false
+          showHeaderDim()
+        }
+      }
+      return
+    }
+
+    // If the padded hole extends above spotlightView's top (target near the top
+    // of the overlay), shrink headerDimView so its bottom doesn't overlap the
+    // hole — avoiding the z-order issue where headerDimView (a decorView child
+    // drawn above the React tree) dims part of the cutout.
+    val effectiveCoveredHeight = (coveredHeight - spotlightView.holeOverreach().toInt()).coerceAtLeast(0)
 
     // Update color in case dimOpacity changed since last time.
     headerDimView.setBackgroundColor(dimArgb(dimOpacityValue ?: DEFAULT_DIM_OPACITY))
-    headerDimView.isClickable = true
-    headerDimView.setOnClickListener { onBackdropPress?.invoke() }
-
-    if (headerDimAdded) return
+    syncHeaderDimClickHandler()
 
     // hideHeaderDim() sets headerDimAdded = false then asynchronously posts
     // removeView. If showHeaderDim fires again before that post runs, the view is
     // still attached — addView would throw "already has a parent". Re-adopt it.
     if (headerDimView.parent === dv) {
       headerDimAdded = true
+      val params = headerDimView.layoutParams as? FrameLayout.LayoutParams
+      if (params != null && params.height != effectiveCoveredHeight) {
+        params.height = effectiveCoveredHeight
+        headerDimView.layoutParams = params
+      }
       return
     }
 
     dv.addView(
       headerDimView,
-      FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, coveredHeight),
+      FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, effectiveCoveredHeight),
     )
     headerDimAdded = true
+  }
+
+  private fun syncHeaderDimClickHandler() {
+    val handler = onBackdropPress
+    headerDimView.isClickable = handler != null
+    headerDimView.setOnClickListener(if (handler != null) View.OnClickListener { handler() } else null)
   }
 
   private fun hideHeaderDim() {
