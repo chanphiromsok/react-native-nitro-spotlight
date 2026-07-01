@@ -371,6 +371,16 @@ internal class SpotlightOverlayView(
    * visibleWindowFrame.top, so this adds the status-bar height to x/y, aligning
    * the rect with the overlay's local origin.
    */
+  /**
+   * Pixels by which the padded hole extends above this view's top boundary.
+   * Used by HybridSpotlightView to shrink headerDimView so it never overlaps
+   * the hole when the target sits near the top of the overlay.
+   */
+  fun holeOverreach(): Float {
+    if (targetLocalPx.isEmpty) return 0f
+    return maxOf(0f, padding * cachedDensity - targetLocalPx.top)
+  }
+
   fun windowDpToLocalDip(windowDp: RectF): RectF {
     val localPx = windowDpToLocalPx(windowDp)
     if (localPx.isEmpty) return RectF()

@@ -295,6 +295,12 @@ class HybridSpotlightView(
       return
     }
 
+    // If the padded hole extends above spotlightView's top (target near the top
+    // of the overlay), shrink headerDimView so its bottom doesn't overlap the
+    // hole — avoiding the z-order issue where headerDimView (a decorView child
+    // drawn above the React tree) dims part of the cutout.
+    val effectiveCoveredHeight = (coveredHeight - spotlightView.holeOverreach().toInt()).coerceAtLeast(0)
+
     // Update color in case dimOpacity changed since last time.
     headerDimView.setBackgroundColor(dimArgb(dimOpacityValue ?: DEFAULT_DIM_OPACITY))
     syncHeaderDimClickHandler()
@@ -305,8 +311,8 @@ class HybridSpotlightView(
     if (headerDimView.parent === dv) {
       headerDimAdded = true
       val params = headerDimView.layoutParams as? FrameLayout.LayoutParams
-      if (params != null && params.height != coveredHeight) {
-        params.height = coveredHeight
+      if (params != null && params.height != effectiveCoveredHeight) {
+        params.height = effectiveCoveredHeight
         headerDimView.layoutParams = params
       }
       return
@@ -314,7 +320,7 @@ class HybridSpotlightView(
 
     dv.addView(
       headerDimView,
-      FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, coveredHeight),
+      FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, effectiveCoveredHeight),
     )
     headerDimAdded = true
   }
